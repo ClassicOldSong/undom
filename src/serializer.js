@@ -18,9 +18,7 @@ const selfClosingTags = {
 	wbr: true
 }
 
-const enc = (s) => {
-	return ('' + s).replace(/[&'"<>\u2190-\u2199]/g, a => `&#${a.codePointAt(0)};`)
-}
+const enc = s => `${s}`.replace(/[&'"<>\u2190-\u2199]/g, a => `&#${a.codePointAt(0)};`)
 
 const attr = (a) => {
 	if (a.value) return ` ${a.name}="${enc(a.value)}"`
@@ -30,11 +28,13 @@ const attr = (a) => {
 function serialize(el) {
 	switch (el.nodeType) {
 		case 3: {
-			return enc(el.nodeValue || '')
+			if (el.nodeValue) return enc(el.nodeValue)
+			return ''
 		}
 
 		case 8: {
-			return `<!--${enc(el.data || '')}-->`
+			if (el.data) return `<!--${enc(el.data)}-->`
+			return '<!---->'
 		}
 
 		default: {

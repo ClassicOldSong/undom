@@ -1,9 +1,10 @@
 {
-  "name": "undom-ef",
+  "name": "@utls/undom-ef",
   "amdName": "undom-ef",
-  "version": "0.4.0",
+  "version": "0.1.0",
   "description": "Minimally viable DOM Document implementation for ef.js.",
-  "main": "dist/undom-ef.js",
+  "main": "dist/undom-ef.umd.js",
+  "module": "dist/undom-ef.mjs",
   "umd:main": "dist/undom-ef.umd.js",
   "unpkg": "dist/undom-ef.umd.js",
   "source": "src/undom-ef.js",
