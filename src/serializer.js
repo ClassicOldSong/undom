@@ -57,8 +57,6 @@ function serialize(el) {
 				else xmlStringFrags.push(`></${tag}>`)
 			}
 
-			console.log(xmlStringFrags)
-
 			return xmlStringFrags.join('')
 		}
 	}
