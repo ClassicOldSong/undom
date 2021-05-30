@@ -13,8 +13,8 @@ const NODE_TYPES = {
 	TEXT_NODE: 3,
 	CDATA_SECTION_NODE: 4,
 	ENTITY_REFERENCE_NODE: 5,
-	COMMENT_NODE: 6,
 	PROCESSING_INSTRUCTION_NODE: 7,
+	COMMENT_NODE: 8,
 	DOCUMENT_NODE: 9
 };
 */
@@ -34,10 +34,12 @@ function createEnvironment() {
 		get nextSibling() {
 			let p = this.parentNode;
 			if (p) return p.childNodes[findWhere(p.childNodes, this, true, true) + 1];
+			return null
 		}
 		get previousSibling() {
 			let p = this.parentNode;
 			if (p) return p.childNodes[findWhere(p.childNodes, this, true, true) - 1];
+			return null
 		}
 		get firstChild() {
 			return this.childNodes[0];
@@ -50,10 +52,18 @@ function createEnvironment() {
 			return child;
 		}
 		insertBefore(child, ref) {
-			child.remove();
-			child.parentNode = this;
-			if (ref) splice(this.childNodes, ref, child, true);
-			else this.childNodes.push(child);
+			if (child.nodeType === 11) {
+				const children = Array.from(child.childNodes);
+
+				for (let i of children) {
+					this.insertBefore(i, ref);
+				}
+			} else {
+				child.remove();
+				child.parentNode = this;
+				if (ref) splice(this.childNodes, ref, child, true);
+				else this.childNodes.push(child);
+			}
 			return child;
 		}
 		replaceChild(child, ref) {
@@ -69,6 +79,67 @@ function createEnvironment() {
 		}
 		remove() {
 			if (this.parentNode) this.parentNode.removeChild(this);
+		}
+	}
+
+
+	class DocumentFragment extends Node {
+		constructor() {
+			super(11, '#document-fragment');
+		}
+		get children() {
+			return this.childNodes.filter(isElement);
+		}
+		get firstElementChild() {
+			return this.children[0];
+		}
+		get lastElementChild() {
+			const children = this.children;
+			return children[children.length - 1];
+		}
+		get childElementCount() {
+			return this.childNodes.length;
+		}
+
+		append(...children) {
+			for (let i of children) {
+				this.appendChild(i)
+			}
+		}
+	}
+
+
+	class CharacterData extends Node {
+		get length() {
+			return this.data.length;
+		}
+
+		appendData(data) {
+			this.data += data
+		}
+
+		deleteData(offset, count) {
+			throw new DOMError('Feature unimplemented')
+		}
+
+		inserteData(offset, count) {
+			throw new DOMError('Feature unimplemented')
+		}
+
+		replaceData(offset, count, data) {
+			throw new DOMError('Feature unimplemented')
+		}
+
+		substringData(offset, count) {
+			throw new DOMError('Feature unimplemented')
+		}
+	}
+
+
+	class Comment extends CharacterData {
+		constructor(data) {
+			super(8, '#comment');
+			this.data = data;
 		}
 	}
 
@@ -103,6 +174,12 @@ function createEnvironment() {
 
 		get children() {
 			return this.childNodes.filter(isElement);
+		}
+
+		append(...children) {
+			for (let i of children) {
+				this.appendChild(i)
+			}
 		}
 
 		setAttribute(key, value) {
@@ -157,6 +234,10 @@ function createEnvironment() {
 			super(9, '#document');			// DOCUMENT_NODE
 		}
 
+		createDocumentFragment() {
+			return new DocumentFragment();
+		}
+
 		createElement(type) {
 			return new Element(null, String(type).toUpperCase());
 		}
@@ -167,9 +248,12 @@ function createEnvironment() {
 			return element;
 		}
 
-
 		createTextNode(text) {
 			return new Text(text);
+		}
+
+		createComment(data) {
+			return new Comment(data);
 		}
 	}
 
