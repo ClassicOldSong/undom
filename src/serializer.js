@@ -47,7 +47,7 @@ function serialize(el) {
 			const tag = nodeName.toLowerCase()
 
 			if (tag) xmlStringFrags.push(`<${tag}`)
-			if (attributes) xmlStringFrags.push(attributes.map(attr))
+			if (attributes) xmlStringFrags.push(...attributes.map(attr))
 			if (childNodes.length > 0) {
 				if (tag) xmlStringFrags.push('>')
 				xmlStringFrags.push(...childNodes.map(item => serialize(item)))
@@ -56,6 +56,8 @@ function serialize(el) {
 				if (selfClosingTags[tag]) xmlStringFrags.push('/>')
 				else xmlStringFrags.push(`></${tag}>`)
 			}
+
+			console.log(xmlStringFrags)
 
 			return xmlStringFrags.join('')
 		}
