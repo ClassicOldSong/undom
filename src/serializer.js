@@ -21,19 +21,27 @@ const selfClosingTags = {
 const enc = s => `${s}`.replace(/[&'"<>\u00a0-\u00b6\u00b8-\u00ff\u0152\u0153\u0160\u0161\u0178\u0192\u02c6\u02dc\u0391-\u03a1\u03a3-\u03a9\u03b1-\u03c9\u03d1\u03d2\u03d6\u2002\u2003\u2009\u200c-\u200f\u2013\u2014\u2018-\u201a\u201c-\u201e\u2020-\u2022\u2026\u2030\u2032\u2033\u2039\u203a\u203e\u20ac\u2122\u2190-\u2194\u21b5\u2200\u2202\u2203\u2205\u2207-\u2209\u220b\u220f\u2211\u2212\u2217\u221a\u221d\u221e\u2220\u2227-\u222b\u2234\u223c\u2245\u2248\u2260\u2261\u2264\u2265\u2282-\u2284\u2286\u2287\u2295\u2297\u22a5\u22c5\u2308-\u230b\u25ca\u2660\u2663\u2665\u2666]/g, a => `&#${a.codePointAt(0)};`)
 
 const attr = (a) => {
-	if (a.value) return ` ${a.name}="${enc(a.value)}"`
+	if (a.value) {
+		if (a.ns) {
+			return ` ${a.ns}:${a.name}="${enc(a.value)}"`
+		}
+		return ` ${a.name}="${enc(a.value)}"`
+	}
 	return ` ${a.name}`
 }
 
 function serialize(el) {
 	switch (el.nodeType) {
 		case 3: {
-			if (el.nodeValue) return enc(el.nodeValue)
+			if (el.data) {
+				if (el.parentNode && el.parentNode.nodeName === 'SCRIPT') return el.data
+				return enc(el.data)
+			}
 			return ''
 		}
 
 		case 8: {
-			if (el.data) return `<!--${enc(el.data)}-->`
+			if (el.data) return `<!--${el.data}-->`
 			return '<!---->'
 		}
 
