@@ -34,7 +34,7 @@ function serialize(el) {
 	switch (el.nodeType) {
 		case 3: {
 			if (el.data) {
-				if (el.parentNode && el.parentNode.nodeName === 'SCRIPT') return el.data
+				if (el.parentNode && ['SCRIPT', 'STYLE'].indexOf(el.parentNode.nodeName) > -1) return el.data
 				return enc(el.data)
 			}
 			return ''
