@@ -52,7 +52,7 @@ function createEnvironment() {
 		}
 		insertBefore(child, ref) {
 			if (child.nodeType === 11) {
-				const children = Array.from(child.childNodes)
+				const children = child.childNodes.slice()
 
 				for (let i of children) {
 					this.insertBefore(i, ref)
@@ -276,10 +276,12 @@ function createEnvironment() {
 			super(9, '#document')			// DOCUMENT_NODE
 		}
 
+		// eslint-disable-next-line class-methods-use-this
 		createDocumentFragment() {
 			return new DocumentFragment()
 		}
 
+		// eslint-disable-next-line class-methods-use-this
 		createElement(type) {
 			return new Element(null, String(type).toUpperCase())
 		}
@@ -290,10 +292,12 @@ function createEnvironment() {
 			return element
 		}
 
+		// eslint-disable-next-line class-methods-use-this
 		createComment(data) {
 			return new Comment(data)
 		}
 
+		// eslint-disable-next-line class-methods-use-this
 		createTextNode(text) {
 			return new Text(text)
 		}

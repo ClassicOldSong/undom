@@ -1,7 +1,7 @@
 {
   "name": "@utls/undom-ef",
   "amdName": "undom-ef",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Minimally viable DOM Document implementation for ef.js.",
   "main": "dist/undom-ef.umd.js",
   "module": "dist/undom-ef.mjs",
@@ -22,6 +22,6 @@
   "bugs": "https://github.com/ClassicOldSong/undom-ef/issues",
   "homepage": "https://github.com/ClassicOldSong/undom-ef",
   "devDependencies": {
-    "microbundle": "^0.13.1"
+    "microbundle": "^0.13.3"
   }
 }
