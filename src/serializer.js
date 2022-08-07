@@ -33,7 +33,7 @@ const attr = (a) => {
 	return ` ${a.name}`
 }
 
-function serialize(el) {
+const serialize = (el, useRawName) => {
 	switch (el.nodeType) {
 		case 3: {
 			if (el.data) {
@@ -51,11 +51,16 @@ function serialize(el) {
 		default: {
 			const xmlStringFrags = []
 
-			const {nodeName, attributes, childNodes} = el
+			const {nodeName, localName, attributes, childNodes} = el
 
 			if (!nodeName) return ''
 
-			const tag = nodeName.toLowerCase()
+			let tag = nodeName
+
+			if (useRawName) tag = localName
+			else tag = nodeName.toLowerCase()
+
+			if (tag && tag[0] === '#') tag = tag.substring(1)
 
 			if (tag) xmlStringFrags.push(`<${tag}`)
 			if (attributes) xmlStringFrags.push(...attributes.map(attr))

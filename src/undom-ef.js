@@ -1,11 +1,15 @@
-import undom from './undom.js'
+import createEnvironment, { isNode, isElement } from './undom.js'
 import serialize from './serializer.js'
 
-const document = undom()
+const getDOMImpl = (env) => {
+	const {scope, createDocument} = createEnvironment(env)
+	const document = createDocument()
 
-const domImpl = {
-	Node: document.defaultView.Node,
-	document
+	return {
+		Node: scope.Node,
+		document,
+		isNode
+	}
 }
 
-export {document, domImpl, undom, serialize}
+export {createEnvironment, getDOMImpl, isNode, isElement, serialize}

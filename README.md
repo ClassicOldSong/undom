@@ -41,7 +41,9 @@ Via npm:
 ## Usage
 
 ```js
-import {document} from '@utls/undom-ef'
+import {geDOMImpl} from '@utls/undom-ef'
+
+const {document} = getDOMImpl()
 
 let foo = document.createElement('foo')
 foo.appendChild(document.createTextNode('Hello, World!'))
@@ -51,15 +53,17 @@ document.body.appendChild(foo);
 with ef.js
 
 ```js
-import {document, domImpl} from '@utls/undom-ef'
+import {getDOMImpl} from '@utls/undom-ef'
 import {setDOMImpl} from 'ef.js'
 import Tpl from 'tpl.eft'
+
+const domImpl = getDOMImpl()
 
 setDOMImpl(domImpl)
 
 const tpl = new Tpl()
 
-tpl.$mount({target: document.body})
+tpl.$mount({target: domImpl.document.body})
 ```
 
 ---
@@ -68,7 +72,7 @@ tpl.$mount({target: document.body})
 ## Serialize to HTML
 
 ```js
-import {document, serialize} from '@utls/undom-ef'
+import {serialize} from '@utls/undom-ef'
 
-console.log(serialize(document.documentElement))
+console.log(serialize(element))
 ```
