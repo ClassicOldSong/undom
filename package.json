@@ -1,10 +1,10 @@
 {
-  "name": "@utls/undom-ef",
-  "amdName": "undom-ef",
-  "version": "0.1.7",
-  "description": "Minimally viable DOM Document implementation for ef.js.",
+  "name": "dominative",
+  "amdName": "dominative",
+  "version": "0.0.0-nativescript-experimental",
+  "description": "DOM implementation for NativeScript",
   "main": "dist/undom-ef.umd.js",
-  "module": "dist/undom-ef.mjs",
+  "module": "src/undom-ef.js",
   "umd:main": "dist/undom-ef.umd.js",
   "unpkg": "dist/undom-ef.umd.js",
   "source": "src/undom-ef.js",
@@ -14,7 +14,10 @@
   "keywords": [
     "dom",
     "document",
-    "shim"
+    "shim",
+    "Native",
+    "{N}",
+    "NativeScript"
   ],
   "repository": "ClassicOldSong/undom-ef",
   "author": "Yukino Song <yukino@yuki.network>",
@@ -22,6 +25,9 @@
   "bugs": "https://github.com/ClassicOldSong/undom-ef/issues",
   "homepage": "https://github.com/ClassicOldSong/undom-ef",
   "devDependencies": {
-    "microbundle": "^0.13.3"
+    "microbundle": "^0.15.0"
+  },
+  "peerDependencies": {
+    "@nativescript/core": "~8.2.0"
   }
 }
