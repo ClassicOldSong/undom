@@ -1,23 +1,36 @@
-export function assign(obj, props) {
-	for (let i in props) obj[i] = props[i];
+export const toLower = str => String(str).toLowerCase()
+
+// eslint-disable-next-line max-params
+export const findWhere = (arr, fn, returnIndex, byValue) => {
+	let i = arr.length
+	while (i) {
+		i -= 1
+		const val = arr[i]
+		if (byValue) {
+			if (val === fn) return returnIndex ? i : val
+		} else if (fn(val)) return returnIndex ? i : val
+	}
 }
 
-export function toLower(str) {
-	return String(str).toLowerCase();
+// eslint-disable-next-line max-params
+export const splice = (arr, item, add, byValue) => {
+	let i = arr ? findWhere(arr, item, true, byValue) : -1
+	if (i !== -1) {
+		if (add) arr.splice(i, 0, add)
+		else arr.splice(i, 1)
+	}
+	return i
 }
 
-export function splice(arr, item, add, byValue) {
-	let i = arr ? findWhere(arr, item, true, byValue) : -1;
-	if (~i) add ? arr.splice(i, 0, add) : arr.splice(i, 1);
-	return i;
-}
+export const createAttributeFilter = (ns, name) => o => o.ns === ns && toLower(o.name) === toLower(name)
 
-export function findWhere(arr, fn, returnIndex, byValue) {
-	let i = arr.length;
-	while (i--) if (byValue ? arr[i]===fn : fn(arr[i])) break;
-	return returnIndex ? i : arr[i];
-}
+export const named = (key, creator) => {
+	key = `__undom_is${key}`
 
-export function createAttributeFilter(ns, name) {
-	return o => o.ns===ns && toLower(o.name)===toLower(name);
+	return (_, ...args) => {
+		if (_ && _.prototype[key]) return _
+		const createdClass = creator(_, ...args)
+		createdClass.prototype[key] = true
+		return createdClass
+	}
 }
