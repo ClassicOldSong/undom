@@ -1,16 +1,10 @@
 {
   "name": "@utls/undom-ef",
   "amdName": "undom-ef",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Minimally viable DOM Document implementation for ef.js.",
-  "main": "dist/undom-ef.umd.js",
-  "module": "dist/undom-ef.js",
-  "umd:main": "dist/undom-ef.umd.js",
-  "unpkg": "dist/undom-ef.umd.js",
-  "source": "src/undom-ef.js",
-  "scripts": {
-    "build": "microbundle"
-  },
+  "main": "src/undom-ef.js",
+  "scripts": {},
   "keywords": [
     "dom",
     "document",
@@ -20,8 +14,5 @@
   "author": "Yukino Song <yukino@yuki.network>",
   "license": "MIT",
   "bugs": "https://github.com/ClassicOldSong/undom-ef/issues",
-  "homepage": "https://github.com/ClassicOldSong/undom-ef",
-  "devDependencies": {
-    "microbundle": "^0.15.0"
-  }
+  "homepage": "https://github.com/ClassicOldSong/undom-ef"
 }
