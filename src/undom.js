@@ -361,16 +361,15 @@ function createEnvironment({
 	const makeDocument = named(
 		'Document',
 		_ => class Document extends makeElement(_) {
+			/* eslint-disable class-methods-use-this */
 			constructor() {
 				super(9, '#document')			// DOCUMENT_NODE
 			}
 
-			// eslint-disable-next-line class-methods-use-this
 			createDocumentFragment() {
 				return new scope.DocumentFragment()
 			}
 
-			// eslint-disable-next-line class-methods-use-this
 			createElement(type) {
 				if (scope[type]) return new scope[type]()
 				if (!silent) console.warn(`UNDOM: Element type '${type}' is not registered.`)
@@ -383,22 +382,18 @@ function createEnvironment({
 				return element
 			}
 
-			// eslint-disable-next-line class-methods-use-this
 			createComment(data) {
 				return new scope.Comment(data)
 			}
 
-			// eslint-disable-next-line class-methods-use-this
 			createTextNode(text) {
 				return new scope.Text(text)
 			}
 
-			// eslint-disable-next-line class-methods-use-this
 			createEvent(type) {
 				return new Event(type)
 			}
 
-			// eslint-disable-next-line class-methods-use-this
 			get defaultView() {
 				return scope
 			}
