@@ -1,6 +1,6 @@
-import * as NativeViews from './native-views'
-
-import createEnvironment, {Event} from './undom.js'
+import * as nativeViews from './native-views/index.js'
+import * as makers from './native-views/maker.js'
+import {createEnvironment, Event, isNode} from '@utls/undom-ef'
 
 /*
 const NODE_TYPES = {
@@ -17,19 +17,21 @@ const NODE_TYPES = {
 
 const silent = false
 
-const undom = createEnvironment({
+const {scope, createDocument, registerElement} = createEnvironment({
 	silent,
 	createBasicElements: false,
+	preserveClassNameOnRegister: true,
 	onSetData(data) {
 		if (this.nodeType === 8) {
 			if (!silent) console.log('[DOM COMMENT]', data)
-		} else if (this.nodeType === 3 && this.parentNode && this.parentNode.__isNative && this.parentNode.__nativeIsText) {
+		} else if (this.nodeType === 3 && this.parentNode && this.parentNode.__isNative && this.parentNode.__dominative_isText) {
 			this.parentNode.updateText()
 		}
 	},
 	onCreateNode(nodeType) {
 		if (nodeType === 1) {
-			this.__nativeEventHandlers = {}
+			// eslint-disable-next-line camelcase
+			this.__dominative_eventHandlers = {}
 		}
 	},
 	onInsertBefore(child, ref) {
@@ -55,9 +57,9 @@ const undom = createEnvironment({
 	},
 	onAddEventListener(type, handler, options) {
 		if (!this.__isNative) return
-		if (options && options.efInternal && !this.__nativeEventHandlers[type]) {
-			this.__nativeEventHandlers[type] = () => this.dispatchEvent(new Event(type))
-			this.onAddEventListener(type, this.__nativeEventHandlers[type])
+		if (options && options.efInternal && !this.__dominative_eventHandlers[type]) {
+			this.__dominative_eventHandlers[type] = () => this.dispatchEvent(new Event(type))
+			this.onAddEventListener(type, this.__dominative_eventHandlers[type])
 			return
 		}
 		this.onAddEventListener(type, handler)
@@ -65,18 +67,27 @@ const undom = createEnvironment({
 	},
 	onRemoveEventListener(type, handler, options) {
 		if (!this.__isNative) return
-		if (options && options.efInternal && this.__nativeEventHandlers[type]) {
-			if (this.__undom_handlers[type] && !this.__undom_handlers[type].length) {
-				handler = this.__nativeEventHandlers[type]
-				delete this.__nativeEventHandlers[type]
+		if (options && options.efInternal && this.__dominative_eventHandlers[type]) {
+			if (this.__undom_eventHandlers[type] && !this.__undom_eventHandlers[type].length) {
+				handler = this.__dominative_eventHandlers[type]
+				delete this.__dominative_eventHandlers[type]
 			}
 		}
 		this.onRemoveEventListener(type, handler)
 	}
 })
 
-for (let [key, val] of Object.entries(NativeViews)) {
-	undom.registerElement(key, val)
+for (let [key, val] of Object.entries(nativeViews)) {
+	registerElement(key, val)
 }
 
-export default undom
+const document = createDocument()
+
+const domImpl = {
+	Node: scope.Node,
+	document,
+	isNode
+}
+
+export default document
+export { document, domImpl, nativeViews, makers }

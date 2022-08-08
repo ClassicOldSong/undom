@@ -4,7 +4,7 @@ import { resolvePath } from './helper.js'
 
 // eslint-disable-next-line max-params
 const named = (name, baseClassName, baseClass, creator) => {
-	const key = `__nativeIs${name}`
+	const key = `__dominative_is${name}`
 	const errMsg = `${name} element must be subclass of ${baseClassName}`
 	const allowSelf = name === baseClassName
 
@@ -118,6 +118,23 @@ const makeText = named(
 		constructor(...args) {
 			super(...args)
 			this.__role = 'Text'
+
+			let textUpdating = false
+			// eslint-disable-next-line camelcase
+			this.__dominative_updateText = () => {
+				if (textUpdating) return
+				setTimeout(() => {
+					super.text = this.childNodes
+						.filter(i => i.nodeType === 3)
+						.map(i => i.textContent)
+						.join('')
+					textUpdating = false
+				})
+			}
+		}
+
+		updateText() {
+			return this.__dominative_updateText()
 		}
 
 		onInsertChild(child, ref) {
@@ -129,13 +146,6 @@ const makeText = named(
 			super.onRemoveChild(child)
 			if (child instanceof FormattedString) this.formattedText = null
 			if (child.nodeType === 3) this.updateText()
-		}
-
-		updateText() {
-			super.text = this.childNodes
-				.filter(i => i.nodeType === 3)
-				.map(i => i.textContent)
-				.join('')
 		}
 	}
 )

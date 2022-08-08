@@ -1,13 +1,14 @@
 import { ListView } from '@nativescript/core'
 import { named, makeView } from './mixin.js'
 
-const updateLater = (self) => {
-	if (self.__listUpdating) return
-	self.__listUpdating = true
+const updateList = (self) => {
+	/* eslint-disable camelcase */
+	if (self.__dominative_listViewUpdating) return
+	self.__dominative_listViewUpdating = true
 	setTimeout(() => {
 		self.refresh()
-		self.__listUpdating = false
-	}, 100)
+		self.__dominative_listViewUpdating = false
+	}, 0)
 }
 
 export class ListViewItem {
@@ -69,7 +70,7 @@ export const makeListView = named(
 			}
 
 			super.onInsertChild(child, ref)
-			updateLater(this)
+			updateList(this)
 		}
 
 		onRemoveChild(child) {
@@ -92,7 +93,7 @@ export const makeListView = named(
 			}
 
 			super.onRemoveChild(child)
-			updateLater(this)
+			updateList(this)
 		}
 	}
 )
