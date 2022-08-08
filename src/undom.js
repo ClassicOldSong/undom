@@ -439,10 +439,7 @@ function createEnvironment({
 		})
 	}
 
-	createDocument.env = createEnvironment
-	createDocument.registerElement = registerElement
 	return {scope, createDocument, makeNode, makeText, makeComment, makeElement, makeDocument, registerElement}
 }
 
-export default createEnvironment
-export {Event, isElement, isNode}
+export {createEnvironment, Event, isElement, isNode}

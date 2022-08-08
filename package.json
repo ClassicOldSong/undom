@@ -1,7 +1,7 @@
 {
   "name": "@utls/undom-ef",
   "amdName": "undom-ef",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Minimally viable DOM Document implementation for ef.js.",
   "main": "dist/undom-ef.umd.js",
   "module": "dist/undom-ef.js",
