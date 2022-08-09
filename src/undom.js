@@ -155,12 +155,15 @@ function createEnvironment({
 				if (this.parentNode) this.parentNode.removeChild(this)
 			}
 
-			addEventListener(type, handler) {
-				if (!this.__undom_eventHandlers) return super.addEventListener(type, handler)
+			addEventListener(type, handler, options) {
+				if (!this.__undom_eventHandlers) {
+					if (super.addEventListener) return super.addEventListener(type, handler, options)
+					return
+				}
 
 				let skip = false
 				if (onAddEventListener) {
-					skip = onAddEventListener.call(this, type, handler)
+					skip = onAddEventListener.call(this, type, handler, options)
 				}
 
 				if (!skip) {
@@ -168,13 +171,16 @@ function createEnvironment({
 					this.__undom_eventHandlers[toLower(type)].push(handler)
 				}
 			}
-			removeEventListener(type, handler) {
-				if (!this.__undom_eventHandlers) return super.removeEventListener(type, handler)
+			removeEventListener(type, handler, options) {
+				if (!this.__undom_eventHandlers) {
+					if (super.removeEventListener) return super.removeEventListener(type, handler, options)
+					return
+				}
 
 				splice(this.__undom_eventHandlers[toLower(type)], handler, false, true)
 
 				if (onRemoveEventListener) {
-					onRemoveEventListener.call(this, type, handler)
+					return onRemoveEventListener.call(this, type, handler, options)
 				}
 			}
 			dispatchEvent(event) {
