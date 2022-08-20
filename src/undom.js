@@ -245,7 +245,17 @@ function createEnvironment({
 		_ => class CharacterData extends makeNode(_) {
 			constructor(...args) {
 				super(...args)
-				Object.defineProperty(this, symbol.data, {})
+
+				// eslint-disable-next-line init-declarations
+				let data
+				Object.defineProperty(this, symbol.data, {
+					get() {
+						return data
+					},
+					set(val) {
+						data = val
+					}
+				})
 			}
 
 			get data() {
