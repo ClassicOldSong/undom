@@ -83,7 +83,7 @@ function createEnvironment({
 					this.childNodes = []
 					this.localName = localName
 
-					Object.defineProperty(this, symbol.eventHandlers, { vaule: {} })
+					Object.defineProperty(this, symbol.eventHandlers, { value: {} })
 
 					if (onCreateNode) {
 						onCreateNode.call(this, nodeType, localName)
