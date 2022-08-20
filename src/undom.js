@@ -1,10 +1,10 @@
 import {
-	toLower,
 	splice,
 	findWhere,
 	createAttributeFilter,
 	named
 } from './util.js'
+import * as symbol from './symbols.js'
 
 /*
 const NODE_TYPES = {
@@ -41,10 +41,10 @@ class Event {
 
 const isElement = node => node.nodeType === 1
 
-const isNode = node => node.__undom_isNode
+const isNode = node => node[symbol.isNode]
 
 const setData = (self, data) => {
-	self.__data = String(data)
+	self[symbol.data] = String(data)
 }
 
 // eslint-disable-next-line max-params
@@ -73,131 +73,140 @@ function createEnvironment({
 
 	const makeNode = named(
 		'Node',
-		(_ = Object) => class Node extends _ {
-			constructor(nodeType, localName) {
-				super()
+		(_ = Object) => {
+			class Node extends _ {
+				constructor(nodeType, localName) {
+					super()
 
-				this.nodeType = nodeType
-				this.nodeName = String(localName).toUpperCase()
-				this.childNodes = []
-				/* eslint-disable camelcase */
-				this.__undom_eventHandlers = {}
-				this.localName = localName
+					this.nodeType = nodeType
+					this.nodeName = String(localName).toUpperCase()
+					this.childNodes = []
+					this.localName = localName
 
-				if (onCreateNode) {
-					onCreateNode.call(this, nodeType, localName)
-				}
-			}
+					Object.defineProperty(this, symbol.eventHandlers, { vaule: {} })
 
-			get nextSibling() {
-				let p = this.parentNode
-				if (p) {
-					let nextIndex = findWhere(p.childNodes, this, true, true) + 1
-
-					return p.childNodes[nextIndex]
-				}
-				return null
-			}
-			get previousSibling() {
-				let p = this.parentNode
-				if (p) return p.childNodes[findWhere(p.childNodes, this, true, true) - 1]
-				return null
-			}
-			get firstChild() {
-				return this.childNodes[0]
-			}
-			get lastChild() {
-				return this.childNodes[this.childNodes.length - 1]
-			}
-			appendChild(child) {
-				this.insertBefore(child)
-				return child
-			}
-			insertBefore(child, ref) {
-				if (child.nodeType === 11) {
-					const children = child.childNodes.slice()
-
-					for (let i of children) {
-						this.insertBefore(i, ref)
+					if (onCreateNode) {
+						onCreateNode.call(this, nodeType, localName)
 					}
-				} else {
-					child.remove()
-					child.parentNode = this
-					if (ref) splice(this.childNodes, ref, child, true)
-					else this.childNodes.push(child)
 				}
 
-				if (onInsertBefore) {
-					onInsertBefore.call(this, child, ref)
-				}
+				get nextSibling() {
+					let p = this.parentNode
+					if (p) {
+						let nextIndex = findWhere(p.childNodes, this, true, true) + 1
 
-				return child
-			}
-			replaceChild(child, ref) {
-				if (ref.parentNode === this) {
-					this.insertBefore(child, ref)
-					ref.remove()
-					return ref
+						return p.childNodes[nextIndex]
+					}
+					return null
 				}
-			}
-			removeChild(child) {
-				const childIndex = this.childNodes.indexOf(child)
-				if (childIndex < 0) return
-				this.childNodes.splice(childIndex, 1)
-
-				if (onRemoveChild) {
-					onRemoveChild.call(this, child)
+				get previousSibling() {
+					let p = this.parentNode
+					if (p) return p.childNodes[findWhere(p.childNodes, this, true, true) - 1]
+					return null
 				}
-
-				return child
-			}
-			remove() {
-				if (this.parentNode) this.parentNode.removeChild(this)
-			}
-
-			addEventListener(type, handler, options) {
-				if (!this.__undom_eventHandlers) {
-					if (super.addEventListener) return super.addEventListener(type, handler, options)
-					return
+				get firstChild() {
+					return this.childNodes[0]
 				}
-
-				let skip = false
-				if (onAddEventListener) {
-					skip = onAddEventListener.call(this, type, handler, options)
+				get lastChild() {
+					return this.childNodes[this.childNodes.length - 1]
 				}
-
-				if (!skip) {
-					if (!this.__undom_eventHandlers[toLower(type)]) this.__undom_eventHandlers[toLower(type)] = []
-					this.__undom_eventHandlers[toLower(type)].push(handler)
+				appendChild(child) {
+					this.insertBefore(child)
+					return child
 				}
-			}
-			removeEventListener(type, handler, options) {
-				if (!this.__undom_eventHandlers) {
-					if (super.removeEventListener) return super.removeEventListener(type, handler, options)
-					return
-				}
+				insertBefore(child, ref) {
+					if (child.nodeType === 11) {
+						const children = child.childNodes.slice()
 
-				splice(this.__undom_eventHandlers[toLower(type)], handler, false, true)
-
-				if (onRemoveEventListener) {
-					return onRemoveEventListener.call(this, type, handler, options)
-				}
-			}
-			dispatchEvent(event) {
-				let t = event.target = this,
-					c = event.cancelable,
-					l = null
-				do {
-					event.currentTarget = t
-					l = t.__undom_eventHandlers && t.__undom_eventHandlers[toLower(event.type)]
-					if (l) for (let i = l.length - 1; i >= 0; i -= 1) {
-						if ((l[i].call(t, event) === false || event._end) && c) {
-							event.defaultPrevented = true
+						for (let i of children) {
+							this.insertBefore(i, ref)
 						}
+					} else {
+						child.remove()
+						child.parentNode = this
+						if (ref) splice(this.childNodes, ref, child, true)
+						else this.childNodes.push(child)
 					}
-				} while (event.bubbles && !event._stop && (t = t.parentNode))
-				return l !== null
+
+					if (onInsertBefore) {
+						onInsertBefore.call(this, child, ref)
+					}
+
+					return child
+				}
+				replaceChild(child, ref) {
+					if (ref.parentNode === this) {
+						this.insertBefore(child, ref)
+						ref.remove()
+						return ref
+					}
+				}
+				removeChild(child) {
+					const childIndex = this.childNodes.indexOf(child)
+					if (childIndex < 0) return
+					this.childNodes.splice(childIndex, 1)
+
+					if (onRemoveChild) {
+						onRemoveChild.call(this, child)
+					}
+
+					return child
+				}
+				remove() {
+					if (this.parentNode) this.parentNode.removeChild(this)
+				}
+
+				addEventListener(type, handler, options) {
+					if (!this[symbol.eventHandlers]) {
+						if (super.addEventListener) return super.addEventListener(type, handler, options)
+						return
+					}
+
+					let skip = false
+					if (onAddEventListener) {
+						skip = onAddEventListener.call(this, type, handler, options)
+					}
+
+					if (!skip) {
+						if (!this[symbol.eventHandlers][type]) this[symbol.eventHandlers][type] = []
+						this[symbol.eventHandlers][type].push(handler)
+					}
+				}
+				removeEventListener(type, handler, options) {
+					if (!this[symbol.eventHandlers]) {
+						if (super.removeEventListener) return super.removeEventListener(type, handler, options)
+						return
+					}
+
+					let skip = false
+					if (onRemoveEventListener) {
+						skip = onRemoveEventListener.call(this, type, handler, options)
+					}
+
+					if (!skip) splice(this[symbol.eventHandlers][type], handler, false, true)
+				}
+				dispatchEvent(event) {
+					let t = event.target = this,
+						c = event.cancelable,
+						l = null
+					do {
+						event.currentTarget = t
+						l = t[symbol.eventHandlers] && t[symbol.eventHandlers][event.type]
+						if (l) for (let i = l.length - 1; i >= 0; i -= 1) {
+							if ((l[i].call(t, event) === false || event._end) && c) {
+								event.defaultPrevented = true
+							}
+						}
+					} while (event.bubbles && !event._stop && (t = t.parentNode))
+					return l !== null
+				}
 			}
+
+			Object.defineProperty(Node.prototype, symbol.isNode, {
+				value: true
+			})
+
+			return Node
 		}
 	)
 
@@ -234,10 +243,15 @@ function createEnvironment({
 	const makeCharacterData = named(
 		'CharacterData',
 		_ => class CharacterData extends makeNode(_) {
+			constructor(...args) {
+				super(...args)
+				Object.defineProperty(this, symbol.data, {})
+			}
+
 			get data() {
 				if (onGetData) onGetData.call(this, data => setData(this, data))
 
-				return this.__data
+				return this[symbol.data]
 			}
 			set data(data) {
 				setData(this, data)
@@ -433,9 +447,16 @@ function createEnvironment({
 	const registerElement = (name, val) => {
 		if (scope[name]) throw new Error(`Element type '${name}' has already been registered.`)
 		scope[name] = makeElement(val, name)
-		if (preserveClassNameOnRegister) Object.defineProperty(scope[name].prototype, 'typeName', {
-			get() {
-				return name
+		if (preserveClassNameOnRegister) Object.defineProperties(scope[name].prototype, {
+			typeName: {
+				get() {
+					return name
+				}
+			},
+			name: {
+				get() {
+					return name
+				}
 			}
 		})
 	}
@@ -443,4 +464,4 @@ function createEnvironment({
 	return {scope, createDocument, makeNode, makeText, makeComment, makeElement, makeDocument, registerElement}
 }
 
-export {createEnvironment, Event, isElement, isNode}
+export {createEnvironment, Event, isElement, isNode, symbol}

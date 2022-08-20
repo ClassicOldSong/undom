@@ -24,13 +24,15 @@ export const splice = (arr, item, add, byValue) => {
 
 export const createAttributeFilter = (ns, name) => o => o.ns === ns && toLower(o.name) === toLower(name)
 
-export const named = (key, creator) => {
+export const named = (key, extender) => {
 	key = `__undom_is${key}`
 
 	return (_, ...args) => {
 		if (_ && _.prototype[key]) return _
-		const createdClass = creator(_, ...args)
-		createdClass.prototype[key] = true
-		return createdClass
+		const extendedClass = extender(_, ...args)
+		Object.defineProperty(extendedClass.prototype, key, {
+			value: true
+		})
+		return extendedClass
 	}
 }

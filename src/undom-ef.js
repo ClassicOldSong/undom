@@ -1,4 +1,4 @@
-import { createEnvironment, isNode, isElement, Event } from './undom.js'
+import { createEnvironment, isNode, isElement, Event, symbol } from './undom.js'
 import serialize from './serializer.js'
 
 const getDOMImpl = (env) => {
@@ -12,4 +12,4 @@ const getDOMImpl = (env) => {
 	}
 }
 
-export {createEnvironment, getDOMImpl, Event, isNode, isElement, serialize}
+export {createEnvironment, getDOMImpl, Event, isNode, isElement, serialize, symbol}
