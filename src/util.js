@@ -25,7 +25,7 @@ export const splice = (arr, item, add, byValue) => {
 export const createAttributeFilter = (ns, name) => o => o.ns === ns && toLower(o.name) === toLower(name)
 
 export const named = (key, extender) => {
-	key = `__undom_is${key}`
+	key = `__undom_is_${key}`
 
 	return (_, ...args) => {
 		if (_ && _.prototype[key]) return _

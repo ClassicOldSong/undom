@@ -328,6 +328,10 @@ function createEnvironment({
 				if (!this.style) this.style = {}
 			}
 
+			get tagName() {
+				return this.nodeName
+			}
+
 			get className() {
 				return this.getAttribute('class')
 			}
