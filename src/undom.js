@@ -348,14 +348,12 @@ function createEnvironment({
 						child[symbol.nextSibling] = ref
 						ref[symbol.previousSibling] = child
 					} else {
-						if (this.lastChild) {
-							this.lastChild[symbol.nextSibling] = child
-							child[symbol.previousSibling] = this.lastChild
-						}
+						child[symbol.previousSibling] = this.lastChild
 						this[symbol.lastChild] = child
 					}
 
-					if (!child.previousSibling) this[symbol.firstChild] = child
+					if (child.previousSibling) child.previousSibling[symbol.nextSibling] = child
+					else this[symbol.firstChild] = child
 				}
 
 				if (onInsertBefore) {

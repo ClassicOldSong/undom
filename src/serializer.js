@@ -66,7 +66,7 @@ const serialize = (el, useRawName) => {
 			if (attributes) xmlStringFrags.push(...attributes.map(attr))
 			if (childNodes.length > 0) {
 				if (tag) xmlStringFrags.push('>')
-				xmlStringFrags.push(...childNodes.map(item => serialize(item)))
+				xmlStringFrags.push(...childNodes.map(item => serialize(item, useRawName)))
 				if (tag) xmlStringFrags.push(`</${tag}>`)
 			} else if (tag) {
 				if (selfClosingTags[tag]) xmlStringFrags.push('/>')
