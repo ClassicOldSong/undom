@@ -1,3 +1,8 @@
 export const eventHandlers = Symbol('undom.eventHandlers')
 export const data = Symbol('undom.data')
 export const isNode = Symbol('undom.isNode')
+export const firstChild = Symbol('undom.firstChild')
+export const lastChild = Symbol('undom.lastChild')
+export const previousSibling = Symbol('undom.previousSibling')
+export const nextSibling = Symbol('undom.nextSibling')
+export const parentNode = Symbol('undom.parentNode')

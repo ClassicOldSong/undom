@@ -80,7 +80,6 @@ function createEnvironment({
 
 					this.nodeType = nodeType
 					this.nodeName = String(localName).toUpperCase()
-					this.childNodes = []
 					this.localName = localName
 
 					Object.defineProperty(this, symbol.eventHandlers, { value: {} })
@@ -90,68 +89,36 @@ function createEnvironment({
 					}
 				}
 
-				get nextSibling() {
-					let p = this.parentNode
-					if (p) {
-						let nextIndex = findWhere(p.childNodes, this, true, true) + 1
-
-						return p.childNodes[nextIndex]
-					}
-					return null
+				get parentNode() {
+					return this[symbol.parentNode] || null
 				}
+
 				get previousSibling() {
-					let p = this.parentNode
-					if (p) return p.childNodes[findWhere(p.childNodes, this, true, true) - 1]
+					return this[symbol.previousSibling] || null
+				}
+				get nextSibling() {
+					return this[symbol.nextSibling] || null
+				}
+
+				get previousElementSibling() {
+					let currentNode = this.previousSibling
+					while (currentNode) {
+						if (isElement(currentNode)) return currentNode
+						currentNode = currentNode.previousSibling
+					}
+
 					return null
 				}
-				get firstChild() {
-					return this.childNodes[0]
-				}
-				get lastChild() {
-					return this.childNodes[this.childNodes.length - 1]
-				}
-				appendChild(child) {
-					this.insertBefore(child)
-					return child
-				}
-				insertBefore(child, ref) {
-					if (child.nodeType === 11) {
-						const children = child.childNodes.slice()
-
-						for (let i of children) {
-							this.insertBefore(i, ref)
-						}
-					} else {
-						child.remove()
-						child.parentNode = this
-						if (ref) splice(this.childNodes, ref, child, true)
-						else this.childNodes.push(child)
+				get nextElementSibling() {
+					let currentNode = this.nextSibling
+					while (currentNode) {
+						if (isElement(currentNode)) return currentNode
+						currentNode = currentNode.nextSibling
 					}
 
-					if (onInsertBefore) {
-						onInsertBefore.call(this, child, ref)
-					}
-
-					return child
+					return null
 				}
-				replaceChild(child, ref) {
-					if (ref.parentNode === this) {
-						this.insertBefore(child, ref)
-						ref.remove()
-						return ref
-					}
-				}
-				removeChild(child) {
-					const childIndex = this.childNodes.indexOf(child)
-					if (childIndex < 0) return
-					this.childNodes.splice(childIndex, 1)
 
-					if (onRemoveChild) {
-						onRemoveChild.call(this, child)
-					}
-
-					return child
-				}
 				remove() {
 					if (this.parentNode) this.parentNode.removeChild(this)
 				}
@@ -211,38 +178,9 @@ function createEnvironment({
 	)
 
 
-	const makeDocumentFragment = named(
-		'DocumentFragment',
-		_ => class DocumentFragment extends makeNode(_) {
-			constructor() {
-				super(11, '#document-fragment')
-			}
-			get children() {
-				return this.childNodes.filter(isElement)
-			}
-			get firstElementChild() {
-				return this.children[0]
-			}
-			get lastElementChild() {
-				const children = this.children
-				return children[children.length - 1]
-			}
-			get childElementCount() {
-				return this.childNodes.length
-			}
-
-			append(...children) {
-				for (let i of children) {
-					this.appendChild(i)
-				}
-			}
-		}
-	)
-
-
 	const makeCharacterData = named(
 		'CharacterData',
-		_ => class CharacterData extends makeNode(_) {
+		(_ = scope.Node) => class CharacterData extends makeNode(_) {
 			constructor(...args) {
 				super(...args)
 
@@ -281,7 +219,7 @@ function createEnvironment({
 
 	const makeComment = named(
 		'Comment',
-		_ => class Comment extends makeCharacterData(_) {
+		(_ = scope.CharacterData) => class Comment extends makeCharacterData(_) {
 			constructor(data) {
 				super(8, '#comment')
 				this.data = data
@@ -298,7 +236,7 @@ function createEnvironment({
 
 	const makeText = named(
 		'Text',
-		_ => class Text extends makeCharacterData(_) {
+		(_ = scope.CharacterData) => class Text extends makeCharacterData(_) {
 			constructor(text) {
 				super(3, '#text')					// TEXT_NODE
 				this.data = text
@@ -319,9 +257,169 @@ function createEnvironment({
 	)
 
 
+	const makeParentNode = named(
+		'ParentNode',
+		(_ = scope.Node) => class ParentNode extends makeNode(_) {
+
+			get firstChild() {
+				return this[symbol.firstChild] || null
+			}
+			get lastChild() {
+				return this[symbol.lastChild] || null
+			}
+
+			get firstElementChild() {
+				let currentNode = this.firstChild
+				while (currentNode) {
+					if (isElement(currentNode)) return currentNode
+					currentNode = currentNode.nextSibling
+				}
+
+				return null
+			}
+			get lastElementChild() {
+				let currentNode = this.lastChild
+				while (currentNode) {
+					if (isElement(currentNode)) return currentNode
+					currentNode = currentNode.previousSibling
+				}
+
+				return null
+			}
+
+			get childNodes() {
+				const childNodes = []
+
+				let currentNode = this.firstChild
+				while (currentNode) {
+					childNodes.push(currentNode)
+					currentNode = currentNode.nextSibling
+				}
+
+				return childNodes
+			}
+			get children() {
+				const children = []
+
+				let currentNode = this.firstElementChild
+				while (currentNode) {
+					children.push(currentNode)
+					currentNode = currentNode.nextElementSibling
+				}
+
+				return children
+			}
+			get childElementCount() {
+				let count = 0
+
+				let currentNode = this.firstElementChild
+				while (currentNode) {
+					count += 1
+					currentNode = currentNode.nextElementSibling
+				}
+
+				return count
+			}
+
+			insertBefore(child, ref) {
+				if (ref && ref.parentNode !== this) throw new Error(`Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node.`)
+				if (child === ref) return
+
+				// eslint-disable-next-line consistent-this
+				let currentParent = this
+				while (currentParent) {
+					if (currentParent === child) throw new Error(`Failed to execute 'insertBefore' on 'Node': The new child element contains the parent.`)
+					currentParent = currentParent.parentNode
+				}
+
+				if (child.nodeType === 11) {
+					let currentNode = child.firstChild
+					while (currentNode) {
+						const nextSibling = currentNode.nextSibling
+						this.insertBefore(currentNode, ref)
+						currentNode = nextSibling
+					}
+				} else {
+					child.remove()
+					child[symbol.parentNode] = this
+
+					if (ref) {
+						child[symbol.previousSibling] = ref.previousSibling
+						child[symbol.nextSibling] = ref
+						ref[symbol.previousSibling] = child
+					} else {
+						if (this.lastChild) {
+							this.lastChild[symbol.nextSibling] = child
+							child[symbol.previousSibling] = this.lastChild
+						}
+						this[symbol.lastChild] = child
+					}
+
+					if (!child.previousSibling) this[symbol.firstChild] = child
+				}
+
+				if (onInsertBefore) {
+					onInsertBefore.call(this, child, ref)
+				}
+
+				return child
+			}
+
+			appendChild(child) {
+				return this.insertBefore(child)
+			}
+
+			append(...children) {
+				for (let i of children) {
+					this.appendChild(i)
+				}
+			}
+
+			replaceChild(child, ref) {
+				if (ref.parentNode !== this) throw new Error(`Failed to execute 'replaceChild' on 'Node': The node to be replaced is not a child of this node.`)
+
+				this.insertBefore(child, ref)
+				ref.remove()
+
+				return ref
+			}
+
+			removeChild(child) {
+				if (child.parentNode !== this) return
+
+				if (this.firstChild === child) this[symbol.firstChild] = child.nextSibling
+				if (this.lastChild === child) this[symbol.lastChild] = child.previousSibling
+
+				if (child.previousSibling) child.previousSibling[symbol.nextSibling] = child.nextSibling
+				if (child.nextSibling) child.nextSibling[symbol.previousSibling] = child.previousSibling
+
+				child[symbol.parentNode] = null
+				child[symbol.previousSibling] = null
+				child[symbol.nextSibling] = null
+
+				if (onRemoveChild) {
+					onRemoveChild.call(this, child)
+				}
+
+				return child
+			}
+		}
+	)
+
+
+	const makeDocumentFragment = named(
+		'DocumentFragment',
+		(_ = scope.ParentNode) => class DocumentFragment extends makeParentNode(_) {
+			constructor() {
+				super(11, '#document-fragment')
+			}
+		}
+	)
+
+
 	const makeElement = named(
 		'Element',
-		(aaa, name) => class Element extends makeNode(aaa) {
+		(_ = scope.ParentNode, name) => class Element extends makeParentNode(_) {
 			constructor(nodeType, localName) {
 				super(nodeType || 1, localName || name)		// ELEMENT_NODE
 				this.attributes = []
@@ -344,16 +442,6 @@ function createEnvironment({
 			}
 			set cssText(val) {
 				this.setAttribute('style', val)
-			}
-
-			get children() {
-				return this.childNodes.filter(isElement)
-			}
-
-			append(...children) {
-				for (let i of children) {
-					this.appendChild(i)
-				}
 			}
 
 			setAttribute(key, value) {
@@ -394,7 +482,7 @@ function createEnvironment({
 
 	const makeDocument = named(
 		'Document',
-		_ => class Document extends makeElement(_) {
+		(_ = scope.Element) => class Document extends makeElement(_) {
 			/* eslint-disable class-methods-use-this */
 			constructor() {
 				super(9, '#document')			// DOCUMENT_NODE
@@ -451,12 +539,13 @@ function createEnvironment({
 
 	scope.Event = Event
 	scope.Node = makeNode()
-	scope.CharacterData = makeCharacterData(scope.Node)
-	scope.Text = makeText(scope.CharacterData)
-	scope.Comment = makeComment(scope.CharacterData)
-	scope.Element = makeElement(scope.Node)
-	scope.DocumentFragment = makeDocumentFragment(scope.Node)
-	scope.Document = makeDocument(scope.Element)
+	scope.CharacterData = makeCharacterData()
+	scope.Text = makeText()
+	scope.Comment = makeComment()
+	scope.ParentNode = makeParentNode()
+	scope.DocumentFragment = makeDocumentFragment()
+	scope.Element = makeElement()
+	scope.Document = makeDocument()
 
 	const registerElement = (name, val) => {
 		if (scope[name]) throw new Error(`Element type '${name}' has already been registered.`)
@@ -475,7 +564,7 @@ function createEnvironment({
 		})
 	}
 
-	return {scope, createDocument, makeNode, makeText, makeComment, makeElement, makeDocument, registerElement}
+	return {scope, createDocument, makeNode, makeParentNode, makeText, makeComment, makeDocumentFragment, makeElement, makeDocument, registerElement}
 }
 
 export {createEnvironment, Event, isElement, isNode, symbol}

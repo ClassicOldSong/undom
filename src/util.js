@@ -15,7 +15,7 @@ export const findWhere = (arr, fn, returnIndex, byValue) => {
 // eslint-disable-next-line max-params
 export const splice = (arr, item, add, byValue) => {
 	let i = arr ? findWhere(arr, item, true, byValue) : -1
-	if (i !== -1) {
+	if (i > -1) {
 		if (add) arr.splice(i, 0, add)
 		else arr.splice(i, 1)
 	}
