@@ -1,10 +1,11 @@
+/* eslint-disable camelcase */
+
 import {
 	splice,
 	findWhere,
 	createAttributeFilter,
 	named
 } from './util.js'
-import * as symbol from './symbols.js'
 
 /*
 const NODE_TYPES = {
@@ -15,7 +16,8 @@ const NODE_TYPES = {
 	ENTITY_REFERENCE_NODE: 5,
 	PROCESSING_INSTRUCTION_NODE: 7,
 	COMMENT_NODE: 8,
-	DOCUMENT_NODE: 9
+	DOCUMENT_NODE: 9,
+	DOCUMENT_FRAGMENT: 11
 }
 */
 
@@ -41,10 +43,10 @@ class Event {
 
 const isElement = node => node.nodeType === 1
 
-const isNode = node => node[symbol.isNode]
+const isNode = node => node.__undom_isNode
 
 const setData = (self, data) => {
-	self[symbol.data] = String(data)
+	self.__undom_data = String(data)
 }
 
 // eslint-disable-next-line max-params
@@ -64,6 +66,8 @@ function createEnvironment({
 	onCreateNode,
 	onInsertBefore,
 	onRemoveChild,
+	onSetTextContent,
+	onGetTextContent,
 	onSetAttributeNS,
 	onGetAttributeNS,
 	onRemoveAttributeNS,
@@ -82,7 +86,7 @@ function createEnvironment({
 					this.nodeName = String(localName).toUpperCase()
 					this.localName = localName
 
-					Object.defineProperty(this, symbol.eventHandlers, { value: {} })
+					Object.defineProperty(this, '__undom_eventHandlers', { value: {} })
 
 					if (onCreateNode) {
 						onCreateNode.call(this, nodeType, localName)
@@ -113,7 +117,7 @@ function createEnvironment({
 				}
 
 				addEventListener(type, handler, options) {
-					if (!this[symbol.eventHandlers]) {
+					if (!this.__undom_eventHandlers) {
 						if (super.addEventListener) return super.addEventListener(type, handler, options)
 						return
 					}
@@ -124,12 +128,12 @@ function createEnvironment({
 					}
 
 					if (!skip) {
-						if (!this[symbol.eventHandlers][type]) this[symbol.eventHandlers][type] = []
-						this[symbol.eventHandlers][type].push(handler)
+						if (!this.__undom_eventHandlers[type]) this.__undom_eventHandlers[type] = []
+						this.__undom_eventHandlers[type].push(handler)
 					}
 				}
 				removeEventListener(type, handler, options) {
-					if (!this[symbol.eventHandlers]) {
+					if (!this.__undom_eventHandlers) {
 						if (super.removeEventListener) return super.removeEventListener(type, handler, options)
 						return
 					}
@@ -139,7 +143,7 @@ function createEnvironment({
 						skip = onRemoveEventListener.call(this, type, handler, options)
 					}
 
-					if (!skip) splice(this[symbol.eventHandlers][type], handler, false, true)
+					if (!skip) splice(this.__undom_eventHandlers[type], handler, false, true)
 				}
 				dispatchEvent(event) {
 					let t = event.target = this,
@@ -147,7 +151,7 @@ function createEnvironment({
 						l = null
 					do {
 						event.currentTarget = t
-						l = t[symbol.eventHandlers] && t[symbol.eventHandlers][event.type]
+						l = t.__undom_eventHandlers && t.__undom_eventHandlers[event.type]
 						if (l) for (let i = l.length - 1; i >= 0; i -= 1) {
 							if ((l[i].call(t, event) === false || event._end) && c) {
 								event.defaultPrevented = true
@@ -158,7 +162,7 @@ function createEnvironment({
 				}
 			}
 
-			Object.defineProperty(Node.prototype, symbol.isNode, {
+			Object.defineProperty(Node.prototype, '__undom_isNode', {
 				value: true
 			})
 
@@ -175,7 +179,7 @@ function createEnvironment({
 
 				// eslint-disable-next-line init-declarations
 				let data
-				Object.defineProperty(this, symbol.data, {
+				Object.defineProperty(this, '__undom_data', {
 					get() {
 						return data
 					},
@@ -188,7 +192,7 @@ function createEnvironment({
 			get data() {
 				if (onGetData) onGetData.call(this, data => setData(this, data))
 
-				return this[symbol.data]
+				return this.__undom_data
 			}
 			set data(data) {
 				setData(this, data)
@@ -197,6 +201,20 @@ function createEnvironment({
 			}
 			get length() {
 				return this.data.length
+			}
+
+			get nodeValue() {
+				return this.data
+			}
+			set nodeValue(data) {
+				this.data = data
+			}
+
+			get textContent() {
+				return this.data
+			}
+			set textContent(text) {
+				this.data = `${text}`
 			}
 
 			appendData(data) {
@@ -213,12 +231,6 @@ function createEnvironment({
 				super(8, '#comment')
 				this.data = data
 			}
-			get nodeValue() {
-				return this.data
-			}
-			set nodeValue(data) {
-				this.data = data
-			}
 		}
 	)
 
@@ -229,18 +241,6 @@ function createEnvironment({
 			constructor(text) {
 				super(3, '#text')					// TEXT_NODE
 				this.data = text
-			}
-			get nodeValue() {
-				return this.data
-			}
-			set nodeValue(data) {
-				this.data = data
-			}
-			get textContent() {
-				return this.data
-			}
-			set textContent(text) {
-				this.data = `${text}`
 			}
 		}
 	)
@@ -301,6 +301,29 @@ function createEnvironment({
 				}
 
 				return count
+			}
+
+			get textContent() {
+				if (onGetTextContent) {
+					const textContent = onGetTextContent.call(this)
+					if (textContent) return textContent
+				}
+
+				const textArr = []
+
+				let currentNode = this.firstChild
+				while (currentNode) {
+					if (currentNode.nodeType !== 8) {
+						const textContent = currentNode.textContent
+						if (textContent) textArr.push(textContent)
+					}
+					currentNode = currentNode.nextSibling
+				}
+
+				return ''.concat(...textArr)
+			}
+			set textContent(val) {
+				if (onSetTextContent) onSetTextContent.call(this, val)
 			}
 
 			insertBefore(child, ref) {
@@ -540,4 +563,4 @@ function createEnvironment({
 	return {scope, createDocument, makeNode, makeParentNode, makeText, makeComment, makeDocumentFragment, makeElement, makeDocument, registerElement}
 }
 
-export {createEnvironment, Event, isElement, isNode, symbol}
+export {createEnvironment, Event, isElement, isNode}
