@@ -89,17 +89,6 @@ function createEnvironment({
 					}
 				}
 
-				get parentNode() {
-					return this[symbol.parentNode] || null
-				}
-
-				get previousSibling() {
-					return this[symbol.previousSibling] || null
-				}
-				get nextSibling() {
-					return this[symbol.nextSibling] || null
-				}
-
 				get previousElementSibling() {
 					let currentNode = this.previousSibling
 					while (currentNode) {
@@ -261,13 +250,6 @@ function createEnvironment({
 		'ParentNode',
 		(_ = scope.Node) => class ParentNode extends makeNode(_) {
 
-			get firstChild() {
-				return this[symbol.firstChild] || null
-			}
-			get lastChild() {
-				return this[symbol.lastChild] || null
-			}
-
 			get firstElementChild() {
 				let currentNode = this.firstChild
 				while (currentNode) {
@@ -325,13 +307,6 @@ function createEnvironment({
 				if (ref && ref.parentNode !== this) throw new Error(`Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node.`)
 				if (child === ref) return
 
-				// eslint-disable-next-line consistent-this
-				let currentParent = this
-				while (currentParent) {
-					if (currentParent === child) throw new Error(`Failed to execute 'insertBefore' on 'Node': The new child element contains the parent.`)
-					currentParent = currentParent.parentNode
-				}
-
 				if (child.nodeType === 11) {
 					let currentNode = child.firstChild
 					while (currentNode) {
@@ -341,19 +316,19 @@ function createEnvironment({
 					}
 				} else {
 					child.remove()
-					child[symbol.parentNode] = this
+					child.parentNode = this
 
 					if (ref) {
-						child[symbol.previousSibling] = ref.previousSibling
-						child[symbol.nextSibling] = ref
-						ref[symbol.previousSibling] = child
+						child.previousSibling = ref.previousSibling
+						child.nextSibling = ref
+						ref.previousSibling = child
 					} else {
-						child[symbol.previousSibling] = this.lastChild
-						this[symbol.lastChild] = child
+						child.previousSibling = this.lastChild
+						this.lastChild = child
 					}
 
-					if (child.previousSibling) child.previousSibling[symbol.nextSibling] = child
-					else this[symbol.firstChild] = child
+					if (child.previousSibling) child.previousSibling.nextSibling = child
+					else this.firstChild = child
 				}
 
 				if (onInsertBefore) {
@@ -385,15 +360,15 @@ function createEnvironment({
 			removeChild(child) {
 				if (child.parentNode !== this) return
 
-				if (this.firstChild === child) this[symbol.firstChild] = child.nextSibling
-				if (this.lastChild === child) this[symbol.lastChild] = child.previousSibling
+				if (this.firstChild === child) this.firstChild = child.nextSibling
+				if (this.lastChild === child) this.lastChild = child.previousSibling
 
-				if (child.previousSibling) child.previousSibling[symbol.nextSibling] = child.nextSibling
-				if (child.nextSibling) child.nextSibling[symbol.previousSibling] = child.previousSibling
+				if (child.previousSibling) child.previousSibling.nextSibling = child.nextSibling
+				if (child.nextSibling) child.nextSibling.previousSibling = child.previousSibling
 
-				child[symbol.parentNode] = null
-				child[symbol.previousSibling] = null
-				child[symbol.nextSibling] = null
+				child.parentNode = null
+				child.previousSibling = null
+				child.nextSibling = null
 
 				if (onRemoveChild) {
 					onRemoveChild.call(this, child)
