@@ -17,7 +17,7 @@ const NODE_TYPES = {
 	PROCESSING_INSTRUCTION_NODE: 7,
 	COMMENT_NODE: 8,
 	DOCUMENT_NODE: 9,
-	DOCUMENT_FRAGMENT: 11
+	DOCUMENT_FRAGMENT_NODE: 11
 }
 */
 
@@ -41,9 +41,9 @@ class Event {
 	}
 }
 
-const isElement = node => node.nodeType === 1
+const isElement = node => node && node.nodeType === 1 || false
 
-const isNode = node => node.__undom_isNode
+const isNode = node => node && node.__undom_isNode || false
 
 const setData = (self, data) => {
 	self.__undom_data = String(data)
@@ -331,11 +331,34 @@ function createEnvironment({
 				if (child === ref) return
 
 				if (child.nodeType === 11) {
-					let currentNode = child.firstChild
-					while (currentNode) {
-						const nextSibling = currentNode.nextSibling
-						this.insertBefore(currentNode, ref)
-						currentNode = nextSibling
+					const {firstChild, lastChild} = child
+
+					if (firstChild && lastChild) {
+						let currentNode = firstChild
+						while (currentNode) {
+							const nextSibling = currentNode.nextSibling
+
+							currentNode.parentNode = this
+							if (onRemoveChild) onRemoveChild.call(child, currentNode)
+							if (onInsertBefore) onInsertBefore.call(this, currentNode, ref)
+
+							currentNode = nextSibling
+						}
+
+						if (ref) {
+							firstChild.previousSibling = ref.previousSibling
+							lastChild.nextSibling = ref
+							ref.previousSibling = lastChild
+						} else {
+							firstChild.previousSibling = this.lastChild
+							lastChild.nextSibling = null
+						}
+
+						if (!firstChild.previousSibling) this.firstChild = firstChild
+						if (!lastChild.nextSibling) this.lastChild = lastChild
+
+						child.firstChild = null
+						child.lastChild = null
 					}
 				} else {
 					child.remove()
@@ -354,9 +377,7 @@ function createEnvironment({
 					else this.firstChild = child
 				}
 
-				if (onInsertBefore) {
-					onInsertBefore.call(this, child, ref)
-				}
+				if (onInsertBefore) onInsertBefore.call(this, child, ref)
 
 				return child
 			}
@@ -393,9 +414,7 @@ function createEnvironment({
 				child.previousSibling = null
 				child.nextSibling = null
 
-				if (onRemoveChild) {
-					onRemoveChild.call(this, child)
-				}
+				if (onRemoveChild) onRemoveChild.call(this, child)
 
 				return child
 			}
