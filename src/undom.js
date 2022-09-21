@@ -6,6 +6,7 @@ import {
 	createAttributeFilter,
 	named
 } from './util.js'
+import serialize from './serializer.js'
 
 /*
 const NODE_TYPES = {
@@ -327,7 +328,7 @@ function createEnvironment({
 			}
 
 			insertBefore(child, ref) {
-				if (ref && ref.parentNode !== this) throw new Error(`Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node.`)
+				if (ref && ref.parentNode !== this) throw new Error(`UNDOM: Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node.`)
 				if (child === ref) return
 
 				if (child.nodeType === 11) {
@@ -393,7 +394,7 @@ function createEnvironment({
 			}
 
 			replaceChild(child, ref) {
-				if (ref.parentNode !== this) throw new Error(`Failed to execute 'replaceChild' on 'Node': The node to be replaced is not a child of this node.`)
+				if (ref.parentNode !== this) throw new Error(`UNDOM: Failed to execute 'replaceChild' on 'Node': The node to be replaced is not a child of this node.`)
 
 				this.insertBefore(child, ref)
 				ref.remove()
@@ -452,6 +453,44 @@ function createEnvironment({
 				this.setAttribute('class', val)
 			}
 
+			// Actually innerHTML and outerHTML isn't DOM
+			// But we just put it here for some frameworks to work
+			// Or warn people not trying to treat undom like a browser
+			get innerHTML() {
+				const serializedChildren = []
+				let currentNode = this.firstChild
+				while (currentNode) {
+					serializedChildren.push(serialize(currentNode, true))
+					currentNode = currentNode.nextSibling
+				}
+				return ''.concat(...serializedChildren)
+			}
+			set innerHTML(val) {
+				// Setting innerHTML with an empty string just clears the element's children
+				if (val === '') {
+					let currentNode = this.firstChild
+
+					while (currentNode) {
+						const nextSibling = currentNode.nextSibling
+						currentNode.remove()
+						currentNode = nextSibling
+					}
+
+					return
+				}
+
+				throw new Error(`UNDOM: Failed to set 'innerHTML' on 'Node': Not implemented.`)
+			}
+
+			get outerHTML() {
+				return serialize(this, true)
+			}
+			set outerHTML(value) {
+				// Setting outehHTMO with an empty string just removes the element form it's parent
+				if (value === '') return this.remove()
+				throw new Error(`UNDOM: Failed to set 'outerHTML' on 'Node': Not implemented.`)
+			}
+
 			get cssText() {
 				return this.getAttribute('style')
 			}
@@ -497,7 +536,7 @@ function createEnvironment({
 
 	const makeDocument = named(
 		'Document',
-		(_ = scope.Element) => class Document extends makeElement(_) {
+		(_ = scope.ParentNode) => class Document extends makeParentNode(_) {
 			/* eslint-disable class-methods-use-this */
 			constructor() {
 				super(9, '#document')			// DOCUMENT_NODE
@@ -563,7 +602,7 @@ function createEnvironment({
 	scope.Document = makeDocument()
 
 	const registerElement = (name, val) => {
-		if (scope[name]) throw new Error(`Element type '${name}' has already been registered.`)
+		if (scope[name]) throw new Error(`UNDOM: Element type '${name}' has already been registered.`)
 		scope[name] = makeElement(val, name)
 		if (preserveClassNameOnRegister) Object.defineProperties(scope[name].prototype, {
 			typeName: {

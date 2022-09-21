@@ -49,11 +49,10 @@ const serialize = (el, useRawName) => {
 		}
 
 		default: {
+			if (!el.nodeName) return ''
+
+			const {nodeName, localName, attributes, firstChild} = el
 			const xmlStringFrags = []
-
-			const {nodeName, localName, attributes, childNodes} = el
-
-			if (!nodeName) return ''
 
 			let tag = nodeName
 
@@ -64,16 +63,22 @@ const serialize = (el, useRawName) => {
 
 			if (tag) xmlStringFrags.push(`<${tag}`)
 			if (attributes) xmlStringFrags.push(...attributes.map(attr))
-			if (childNodes.length > 0) {
+			if (firstChild) {
 				if (tag) xmlStringFrags.push('>')
-				xmlStringFrags.push(...childNodes.map(item => serialize(item, useRawName)))
+
+				let currentNode = firstChild
+				while (currentNode) {
+					xmlStringFrags.push(serialize(currentNode, useRawName))
+					currentNode = currentNode.nextSibling
+				}
+
 				if (tag) xmlStringFrags.push(`</${tag}>`)
 			} else if (tag) {
 				if (selfClosingTags[tag]) xmlStringFrags.push('/>')
 				else xmlStringFrags.push(`></${tag}>`)
 			}
 
-			return xmlStringFrags.join('')
+			return ''.concat(...xmlStringFrags)
 		}
 	}
 }
