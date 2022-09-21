@@ -76,6 +76,12 @@ function createEnvironment({
 	onRemoveEventListener
 } = {}) {
 
+	const createElement = (type) => {
+		if (scope[type]) return new scope[type]()
+		if (!silent) console.warn(`UNDOM: Element type '${type}' is not registered.`)
+		return new scope.Element(null, type)
+	}
+
 	const makeNode = named(
 		'Node',
 		(_ = Object) => {
@@ -115,6 +121,42 @@ function createEnvironment({
 
 				remove() {
 					if (this.parentNode) this.parentNode.removeChild(this)
+				}
+
+				replaceWith(...nodes) {
+					if (!this.parentNode) return
+
+					const ref = this.nextSibling
+					const parent = this.parentNode
+					for (let i of nodes) {
+						i.remove()
+						parent.insertBefore(i, ref)
+					}
+				}
+
+				cloneNode(deep) {
+					const clonedNode = createElement(this.localName)
+
+					if (this.__undom_isParentNode) {
+						if (isElement(this)) {
+							const sourceAttrs = this.attributes
+							for (let {ns, name, value} of sourceAttrs) {
+								clonedNode.setAttributeNS(ns, name, value)
+							}
+						}
+
+						if (deep) {
+							let currentNode = this.firstChild
+							while (currentNode) {
+								clonedNode.appendChild(currentNode.clonedNode(deep))
+								currentNode = currentNode.nextSibling
+							}
+						}
+					} else if (this.nodeType === 3 || this.nodeType === 8) {
+						clonedNode.nodeValue = this.nodeValue
+					}
+
+					return clonedNode
 				}
 
 				addEventListener(type, handler, options) {
@@ -393,13 +435,15 @@ function createEnvironment({
 				}
 			}
 
-			replaceChild(child, ref) {
-				if (ref.parentNode !== this) throw new Error(`UNDOM: Failed to execute 'replaceChild' on 'Node': The node to be replaced is not a child of this node.`)
+			replaceChild(child, oldChild) {
+				if (oldChild.parentNode !== this) throw new Error(`UNDOM: Failed to execute 'replaceChild' on 'Node': The node to be replaced is not a child of this node.`)
+
+				const ref = oldChild.nextSibling
+				oldChild.remove()
 
 				this.insertBefore(child, ref)
-				ref.remove()
 
-				return ref
+				return oldChild
 			}
 
 			removeChild(child) {
@@ -547,9 +591,7 @@ function createEnvironment({
 			}
 
 			createElement(type) {
-				if (scope[type]) return new scope[type]()
-				if (!silent) console.warn(`UNDOM: Element type '${type}' is not registered.`)
-				return new scope.Element(null, type)
+				return createElement(type)
 			}
 
 			createElementNS(ns, type) {
@@ -618,7 +660,7 @@ function createEnvironment({
 		})
 	}
 
-	return {scope, createDocument, makeNode, makeParentNode, makeText, makeComment, makeDocumentFragment, makeElement, makeDocument, registerElement}
+	return {scope, createDocument, createElement, makeNode, makeParentNode, makeText, makeComment, makeDocumentFragment, makeElement, makeDocument, registerElement}
 }
 
 export {createEnvironment, Event, isElement, isNode}
