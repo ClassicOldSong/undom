@@ -67,6 +67,8 @@ function createEnvironment({
 	onCreateNode,
 	onInsertBefore,
 	onRemoveChild,
+	onSetInnerHTML,
+	onSetOuterHTML,
 	onSetTextContent,
 	onGetTextContent,
 	onSetAttributeNS,
@@ -509,9 +511,9 @@ function createEnvironment({
 				}
 				return ''.concat(...serializedChildren)
 			}
-			set innerHTML(val) {
+			set innerHTML(value) {
 				// Setting innerHTML with an empty string just clears the element's children
-				if (val === '') {
+				if (value === '') {
 					let currentNode = this.firstChild
 
 					while (currentNode) {
@@ -523,6 +525,8 @@ function createEnvironment({
 					return
 				}
 
+				if (onSetInnerHTML) return onSetInnerHTML(this, value)
+
 				throw new Error(`UNDOM: Failed to set 'innerHTML' on 'Node': Not implemented.`)
 			}
 
@@ -532,6 +536,7 @@ function createEnvironment({
 			set outerHTML(value) {
 				// Setting outehHTMO with an empty string just removes the element form it's parent
 				if (value === '') return this.remove()
+				if (onSetOuterHTML) return onSetOuterHTML.call(this, value)
 				throw new Error(`UNDOM: Failed to set 'outerHTML' on 'Node': Not implemented.`)
 			}
 
