@@ -137,10 +137,13 @@ function createEnvironment({
 				}
 
 				cloneNode(deep) {
-					const clonedNode = createElement(this.localName)
+					let clonedNode = null
 
-					if (this.__undom_isParentNode) {
-						if (isElement(this)) {
+					if (this.__undom_is_ParentNode) {
+						if (this.nodeType === 9) clonedNode = new scope.Document()
+						else if (this.nodeType === 11) clonedNode = new scope.DocumentFragment()
+						else {
+							clonedNode = createElement(this.localName)
 							const sourceAttrs = this.attributes
 							for (let {ns, name, value} of sourceAttrs) {
 								clonedNode.setAttributeNS(ns, name, value)
@@ -154,9 +157,8 @@ function createEnvironment({
 								currentNode = currentNode.nextSibling
 							}
 						}
-					} else if (this.nodeType === 3 || this.nodeType === 8) {
-						clonedNode.nodeValue = this.nodeValue
-					}
+					} else if (this.nodeType === 3) clonedNode = new scope.Text(this.nodeValue)
+					else if (this.nodeType === 8) clonedNode = new scope.Comment(this.nodeValue)
 
 					return clonedNode
 				}
