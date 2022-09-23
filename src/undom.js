@@ -650,8 +650,9 @@ function createEnvironment({
 
 	const registerElement = (name, val) => {
 		if (scope[name]) throw new Error(`UNDOM: Element type '${name}' has already been registered.`)
-		scope[name] = makeElement(val, name)
-		if (preserveClassNameOnRegister) Object.defineProperties(scope[name].prototype, {
+		const element = makeElement(val, name)
+		scope[name] = element
+		if (preserveClassNameOnRegister) Object.defineProperties(element.prototype, {
 			typeName: {
 				get() {
 					return name
@@ -663,6 +664,8 @@ function createEnvironment({
 				}
 			}
 		})
+
+		return element
 	}
 
 	return {scope, createDocument, createElement, makeNode, makeParentNode, makeText, makeComment, makeDocumentFragment, makeElement, makeDocument, registerElement}
