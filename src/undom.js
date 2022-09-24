@@ -163,6 +163,10 @@ function createEnvironment({
 					return clonedNode
 				}
 
+				hasChildNodes() {
+					return !!this.firstChild
+				}
+
 				addEventListener(type, handler, options) {
 					if (!this.__undom_eventHandlers) {
 						if (super.addEventListener) return super.addEventListener(type, handler, options)
