@@ -8,12 +8,7 @@
 
 > A bare-bones HTML DOM in a box. If you want the DOM but not a parser, this might be for you.
 >
-> `1kB`, works in Node and browsers, plugins coming soon!
-
-
-[**JSFiddle Demo:**](https://jsfiddle.net/developit/4qv3v6r3/) Rendering [preact](https://github.com/developit/preact/) components into an undom Document.
-
-[![preview](https://i.gyazo.com/7fcca9dd3e562b076293ef2cf3979d23.gif)](https://jsfiddle.net/developit/4qv3v6r3/)
+> Works in Node and browsers, plugin ready!
 
 ---
 
@@ -33,6 +28,13 @@ The intent to keep things as simple as possible means undom lacks some DOM featu
 Via npm:
 
 `npm install @utls/undom-ef`
+
+
+---
+
+## Derivatives
+
+[DOMiNATIVE](https://github.com/SudoMaker/DOMiNATIVE) Generic DOM implementation for [NativeScript](https://nativescript.org/)
 
 
 ---

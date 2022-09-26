@@ -38,13 +38,41 @@ class Event {
 		this._end = this._stop = true
 	}
 	preventDefault() {
+		if (this._passive) {
+			console.error('Unable to preventDefault inside passive event listener invocation.')
+			return
+		}
+
 		this.defaultPrevented = true
 	}
 }
 
-const isElement = node => node && node.nodeType === 1 || false
+// eslint-disable-next-line max-params
+const getEventDescriptor = (target, type, handler, options) => {
+	if (typeof option === 'object') {
+		const { capture, once, passive, signal, mode } = options
+		return { target, capture, once, passive, signal, mode, handler }
+	}
 
-const isNode = node => node && node.__undom_isNode || false
+	return { target, capture: !!options, type, handler }
+}
+
+
+const runEventHandlers = (store, event, cancelable) => {
+	for (let descriptor of [...store.values()]) {
+		const { target, handler, removed } = descriptor
+		if (!removed) {
+			event._passive = !cancelable || !!descriptor.passive
+			event.currentTarget = target
+			handler.call(target, event)
+			if (event._end) return
+		}
+	}
+}
+
+const isElement = node => node && node.__undom_is_Element || false
+
+const isNode = node => node && node.__undom_is_Node || false
 
 const setData = (self, data) => {
 	self.__undom_data = String(data)
@@ -75,7 +103,9 @@ function createEnvironment({
 	onGetAttributeNS,
 	onRemoveAttributeNS,
 	onAddEventListener,
-	onRemoveEventListener
+	onAddedEventListener,
+	onRemoveEventListener,
+	onRemovedEventListener
 } = {}) {
 
 	const createElement = (type) => {
@@ -95,7 +125,10 @@ function createEnvironment({
 					this.nodeName = String(localName).toUpperCase()
 					this.localName = localName
 
-					Object.defineProperty(this, '__undom_eventHandlers', { value: {} })
+					this.__undom_eventHandlers = {
+						capturePhase: {},
+						bubblePhase: {}
+					}
 
 					if (onCreateNode) {
 						onCreateNode.call(this, nodeType, localName)
@@ -168,6 +201,7 @@ function createEnvironment({
 				}
 
 				addEventListener(type, handler, options) {
+					// Method could be called before constructor
 					if (!this.__undom_eventHandlers) {
 						if (super.addEventListener) return super.addEventListener(type, handler, options)
 						return
@@ -179,11 +213,40 @@ function createEnvironment({
 					}
 
 					if (!skip) {
-						if (!this.__undom_eventHandlers[type]) this.__undom_eventHandlers[type] = []
-						this.__undom_eventHandlers[type].push(handler)
+						const descriptor = getEventDescriptor(this, type, handler, options)
+
+						const phase = descriptor.capture && 'capturePhase' || 'bubblePhase'
+
+						let store = this.__undom_eventHandlers[phase][type]
+						if (!store) store = this.__undom_eventHandlers[phase][type] = new Map()
+						else if (store.has(handler)) return
+
+						store.set(handler, descriptor)
+
+						const abortHandler = () => {
+							if (!descriptor.removed) this.removeEventListener(type, handler, options)
+						}
+
+						descriptor.abortHandler = abortHandler
+
+						if (descriptor.once) {
+							descriptor.handler = function (...args) {
+								abortHandler()
+								handler.call(this, ...args)
+							}
+						}
+
+						if (descriptor.signal) {
+							descriptor.signal.addEventListener('abort', abortHandler)
+						}
+
+						if (onAddedEventListener) {
+							onAddedEventListener.call(this, type, handler, options)
+						}
 					}
 				}
 				removeEventListener(type, handler, options) {
+					// Method could be called before constructor
 					if (!this.__undom_eventHandlers) {
 						if (super.removeEventListener) return super.removeEventListener(type, handler, options)
 						return
@@ -194,28 +257,64 @@ function createEnvironment({
 						skip = onRemoveEventListener.call(this, type, handler, options)
 					}
 
-					if (!skip) splice(this.__undom_eventHandlers[type], handler, false, true)
-				}
-				dispatchEvent(event) {
-					let t = event.target = this,
-						c = event.cancelable,
-						l = null
-					do {
-						event.currentTarget = t
-						l = t.__undom_eventHandlers && t.__undom_eventHandlers[event.type]
-						if (l) for (let i = l.length - 1; i >= 0; i -= 1) {
-							if ((l[i].call(t, event) === false || event._end) && c) {
-								event.defaultPrevented = true
-							}
+					if (!skip) {
+						let capture = false
+						if (typeof options === 'object') capture = !!options.capture
+						else capture = !!options
+
+						const phase = capture && 'capturePhase' || 'bubblePhase'
+
+						const store = this.__undom_eventHandlers[phase][type]
+						if (!store) return
+
+						const descriptor = store.get(handler)
+						if (!descriptor) return
+
+						if (descriptor.signal) descriptor.signal.removeEventListener('abort', descriptor.abortHandler)
+						store.delete(handler)
+
+						descriptor.remove = true
+
+						if (onRemovedEventListener) {
+							onRemovedEventListener.call(this, type, handler, options)
 						}
-					} while (event.bubbles && !event._stop && (t = t.parentNode))
-					return l !== null
+					}
+				}
+
+				// eslint-disable-next-line complexity
+				dispatchEvent(event) {
+					const { cancelable, bubbles, captures, type } = event
+					event.target = this
+
+					const capturePhase = []
+					const bubblePhase = []
+
+					if (bubbles || captures) {
+						// eslint-disable-next-line consistent-this
+						let currentNode = this
+						while (currentNode) {
+							if (captures && currentNode.__undom_eventHandlers.capturePhase[type]) capturePhase.unshift(currentNode.__undom_eventHandlers.capturePhase[type])
+							if (bubbles && currentNode.__undom_eventHandlers.bubblePhase[type]) bubblePhase.push(currentNode.__undom_eventHandlers.bubblePhase[type])
+							currentNode = currentNode.parentNode
+						}
+					}
+
+					if (!captures && this.__undom_eventHandlers.capturePhase[type]) capturePhase.push(this.__undom_eventHandlers.capturePhase[type])
+					if (!bubbles && this.__undom_eventHandlers.bubblePhase[type]) bubblePhase.push(this.__undom_eventHandlers.bubblePhase[type])
+
+					for (let i of capturePhase) {
+						runEventHandlers(i, event, cancelable)
+						if (!event.bubbles || event._stop) return !event.defaultPrevented
+					}
+
+					for (let i of bubblePhase) {
+						runEventHandlers(i, event, cancelable)
+						if (!event.bubbles || event._stop) return !event.defaultPrevented
+					}
+
+					return !event.defaultPrevented
 				}
 			}
-
-			Object.defineProperty(Node.prototype, '__undom_isNode', {
-				value: true
-			})
 
 			return Node
 		}
@@ -631,6 +730,7 @@ function createEnvironment({
 
 	const createDocument = () => {
 		const document = new scope.Document()
+		if (!scope.document) scope.document = document
 
 		if (createBasicElements) {
 			document.documentElement = document.createElement('html')
@@ -674,7 +774,9 @@ function createEnvironment({
 		return element
 	}
 
-	return {scope, createDocument, createElement, makeNode, makeParentNode, makeText, makeComment, makeDocumentFragment, makeElement, makeDocument, registerElement}
+	const document = createDocument()
+
+	return {scope, document, createDocument, createElement, makeNode, makeParentNode, makeText, makeComment, makeDocumentFragment, makeElement, makeDocument, registerElement}
 }
 
 export {createEnvironment, Event, isElement, isNode}
