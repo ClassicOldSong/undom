@@ -23,13 +23,15 @@ const NODE_TYPES = {
 */
 
 class Event {
-	constructor(type, {bubbles, cancelable} = {}) {
-		this.initEvent(type, bubbles, cancelable)
+	constructor(type, {bubbles, captures, cancelable} = {}) {
+		this.initEvent(type, bubbles, cancelable, captures)
 	}
-	initEvent(type, bubbles, cancelable) {
+	// eslint-disable-next-line max-params
+	initEvent(type, bubbles, cancelable = true, captures) {
 		this.type = type
 		this.bubbles = !!bubbles
 		this.cancelable = !!cancelable
+		this.captures = !!captures
 	}
 	stopPropagation() {
 		this._stop = true
