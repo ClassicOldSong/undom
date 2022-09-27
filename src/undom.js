@@ -52,8 +52,8 @@ class Event {
 // eslint-disable-next-line max-params
 const getEventDescriptor = (target, type, handler, options) => {
 	if (typeof option === 'object') {
-		const { capture, once, passive, signal, mode } = options
-		return { target, capture, once, passive, signal, mode, handler }
+		const { capture, once, passive, signal } = options
+		return { target, capture, once, passive, signal, handler }
 	}
 
 	return { target, capture: !!options, type, handler }
@@ -205,8 +205,7 @@ function createEnvironment({
 				addEventListener(...args) {
 					// Method could be called before constructor
 					if (!this.__undom_eventHandlers) {
-						if (super.addEventListener) return super.addEventListener(...args)
-						return
+						return super.addEventListener(...args)
 					}
 
 					const [type, handler, options] = args
@@ -252,8 +251,7 @@ function createEnvironment({
 				removeEventListener(...args) {
 					// Method could be called before constructor
 					if (!this.__undom_eventHandlers) {
-						if (super.removeEventListener) return super.removeEventListener(...args)
-						return
+						return super.removeEventListener(...args)
 					}
 
 					const [type, handler, options] = args
