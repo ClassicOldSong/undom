@@ -41,7 +41,7 @@ class Event {
 	}
 	preventDefault() {
 		if (this._passive) {
-			console.error('Unable to preventDefault inside passive event listener invocation.')
+			console.error('[UNDOM] Unable to preventDefault inside passive event listener invocation.')
 			return
 		}
 
@@ -112,7 +112,7 @@ function createEnvironment({
 
 	const createElement = (type) => {
 		if (scope[type]) return new scope[type]()
-		if (!silent) console.warn(`UNDOM: Element type '${type}' is not registered.`)
+		if (!silent) console.warn(`[UNDOM] Element type '${type}' is not registered.`)
 		return new scope.Element(null, type)
 	}
 
@@ -202,16 +202,18 @@ function createEnvironment({
 					return !!this.firstChild
 				}
 
-				addEventListener(type, handler, options) {
+				addEventListener(...args) {
 					// Method could be called before constructor
 					if (!this.__undom_eventHandlers) {
-						if (super.addEventListener) return super.addEventListener(type, handler, options)
+						if (super.addEventListener) return super.addEventListener(...args)
 						return
 					}
 
+					const [type, handler, options] = args
+
 					let skip = false
 					if (onAddEventListener) {
-						skip = onAddEventListener.call(this, type, handler, options)
+						skip = onAddEventListener.call(this, ...args)
 					}
 
 					if (!skip) {
@@ -226,15 +228,15 @@ function createEnvironment({
 						store.set(handler, descriptor)
 
 						const abortHandler = () => {
-							if (!descriptor.removed) this.removeEventListener(type, handler, options)
+							if (!descriptor.removed) this.removeEventListener(...args)
 						}
 
 						descriptor.abortHandler = abortHandler
 
 						if (descriptor.once) {
-							descriptor.handler = function (...args) {
+							descriptor.handler = function (...handlerArgs) {
 								abortHandler()
-								handler.call(this, ...args)
+								handler.call(this, ...handlerArgs)
 							}
 						}
 
@@ -243,20 +245,22 @@ function createEnvironment({
 						}
 
 						if (onAddedEventListener) {
-							onAddedEventListener.call(this, type, handler, options)
+							onAddedEventListener.call(this, ...args)
 						}
 					}
 				}
-				removeEventListener(type, handler, options) {
+				removeEventListener(...args) {
 					// Method could be called before constructor
 					if (!this.__undom_eventHandlers) {
-						if (super.removeEventListener) return super.removeEventListener(type, handler, options)
+						if (super.removeEventListener) return super.removeEventListener(...args)
 						return
 					}
 
+					const [type, handler, options] = args
+
 					let skip = false
 					if (onRemoveEventListener) {
-						skip = onRemoveEventListener.call(this, type, handler, options)
+						skip = onRemoveEventListener.call(this, ...args)
 					}
 
 					if (!skip) {
@@ -277,8 +281,10 @@ function createEnvironment({
 
 						descriptor.remove = true
 
+						if (!store.size) delete this.__undom_eventHandlers[phase][type]
+
 						if (onRemovedEventListener) {
-							onRemovedEventListener.call(this, type, handler, options)
+							onRemovedEventListener.call(this, ...args)
 						}
 					}
 				}
@@ -479,7 +485,7 @@ function createEnvironment({
 			}
 
 			insertBefore(child, ref) {
-				if (ref && ref.parentNode !== this) throw new Error(`UNDOM: Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node.`)
+				if (ref && ref.parentNode !== this) throw new Error(`[UNDOM] Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node.`)
 				if (child === ref) return
 
 				if (child.nodeType === 11) {
@@ -545,7 +551,7 @@ function createEnvironment({
 			}
 
 			replaceChild(child, oldChild) {
-				if (oldChild.parentNode !== this) throw new Error(`UNDOM: Failed to execute 'replaceChild' on 'Node': The node to be replaced is not a child of this node.`)
+				if (oldChild.parentNode !== this) throw new Error(`[UNDOM] Failed to execute 'replaceChild' on 'Node': The node to be replaced is not a child of this node.`)
 
 				const ref = oldChild.nextSibling
 				oldChild.remove()
@@ -634,7 +640,7 @@ function createEnvironment({
 
 				if (onSetInnerHTML) return onSetInnerHTML(this, value)
 
-				throw new Error(`UNDOM: Failed to set 'innerHTML' on 'Node': Not implemented.`)
+				throw new Error(`[UNDOM] Failed to set 'innerHTML' on 'Node': Not implemented.`)
 			}
 
 			get outerHTML() {
@@ -644,7 +650,7 @@ function createEnvironment({
 				// Setting outehHTMO with an empty string just removes the element form it's parent
 				if (value === '') return this.remove()
 				if (onSetOuterHTML) return onSetOuterHTML.call(this, value)
-				throw new Error(`UNDOM: Failed to set 'outerHTML' on 'Node': Not implemented.`)
+				throw new Error(`[UNDOM] Failed to set 'outerHTML' on 'Node': Not implemented.`)
 			}
 
 			get cssText() {
@@ -757,7 +763,7 @@ function createEnvironment({
 	scope.Document = makeDocument()
 
 	const registerElement = (name, val) => {
-		if (scope[name]) throw new Error(`UNDOM: Element type '${name}' has already been registered.`)
+		if (scope[name]) throw new Error(`[UNDOM] Element type '${name}' has already been registered.`)
 		const element = makeElement(val, name)
 		scope[name] = element
 		if (preserveClassNameOnRegister) Object.defineProperties(element.prototype, {
