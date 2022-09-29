@@ -27,12 +27,27 @@ export const createAttributeFilter = (ns, name) => o => o.ns === ns && toLower(o
 export const named = (key, extender) => {
 	key = `__undom_is_${key}`
 
-	return (_, ...args) => {
+	const maker = (_, ...args) => {
 		if (_ && _.prototype[key]) return _
 		const extendedClass = extender(_, ...args)
 		Object.defineProperty(extendedClass.prototype, key, {
+			enumerable: false,
 			value: true
 		})
 		return extendedClass
 	}
+
+	maker.master = (...args) => {
+		const extendedClass = maker(...args)
+
+		Object.defineProperty(extendedClass, Symbol.hasInstance, {
+			value(instance) {
+				return instance[key]
+			}
+		})
+
+		return extendedClass
+	}
+
+	return maker
 }

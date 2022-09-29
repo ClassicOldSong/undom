@@ -22,6 +22,9 @@ const NODE_TYPES = {
 }
 */
 
+const HTMLNS = 'http://www.w3.org/1999/xhtml'
+const SVGNS = 'http://www.w3.org/2000/svg'
+
 class Event {
 	constructor(type, {bubbles, captures, cancelable} = {}) {
 		this.initEvent(type, bubbles, cancelable, captures)
@@ -34,13 +37,13 @@ class Event {
 		this.captures = !!captures
 	}
 	stopPropagation() {
-		this._stop = true
+		this.__undom_event_stop = true
 	}
 	stopImmediatePropagation() {
-		this._end = this._stop = true
+		this.__undom_event_end = this.__undom_event_stop = true
 	}
 	preventDefault() {
-		if (this._passive) {
+		if (this.__undom_event_passive) {
 			console.error('[UNDOM] Unable to preventDefault inside passive event listener invocation.')
 			return
 		}
@@ -48,6 +51,8 @@ class Event {
 		this.defaultPrevented = true
 	}
 }
+
+const createEvent = eventName => new Event(eventName)
 
 // eslint-disable-next-line max-params
 const getEventDescriptor = (target, type, handler, options) => {
@@ -64,10 +69,10 @@ const runEventHandlers = (store, event, cancelable) => {
 	for (let descriptor of [...store.values()]) {
 		const { target, handler, removed } = descriptor
 		if (!removed) {
-			event._passive = !cancelable || !!descriptor.passive
+			event.__undom_event_passive = !cancelable || !!descriptor.passive
 			event.currentTarget = target
 			handler.call(target, event)
-			if (event._end) return
+			if (event.__undom_event_end) return
 		}
 	}
 }
@@ -80,6 +85,17 @@ const setData = (self, data) => {
 	self.__undom_data = String(data)
 }
 
+const defaultInitDocument = (document) => {
+	document.documentElement = document.createElement('html')
+	document.head = document.createElement('head')
+	document.body = document.createElement('body')
+
+	document.documentElement.appendChild(document.head)
+	document.documentElement.appendChild(document.body)
+
+	document.appendChild(document.documentElement)
+}
+
 // eslint-disable-next-line max-params
 const updateAttributeNS = (self, ns, name, value) => {
 	let attr = findWhere(self.attributes, createAttributeFilter(ns, name), false, false)
@@ -89,9 +105,10 @@ const updateAttributeNS = (self, ns, name, value) => {
 
 function createEnvironment({
 	silent = true,
-	createBasicElements = true,
-	preserveClassNameOnRegister = false,
 	scope = {},
+	commonAncestors = {},
+	initDocument = defaultInitDocument,
+	preserveClassNameOnRegister = false,
 	onGetData,
 	onSetData,
 	onCreateNode,
@@ -113,19 +130,18 @@ function createEnvironment({
 	const createElement = (type) => {
 		if (scope[type]) return new scope[type]()
 		if (!silent) console.warn(`[UNDOM] Element type '${type}' is not registered.`)
-		return new scope.Element(null, type)
+		return new scope.HTMLElement(null, type)
 	}
 
 	const makeNode = named(
 		'Node',
-		(_ = Object) => {
+		(_ = commonAncestors.Node || Object) => {
 			class Node extends _ {
 				constructor(nodeType, localName) {
 					super()
 
 					this.nodeType = nodeType
-					this.nodeName = String(localName).toUpperCase()
-					this.localName = localName
+					if (localName) this.nodeName = localName[0] === '#' ? localName : String(localName).toUpperCase()
 
 					this.__undom_eventHandlers = {
 						capturePhase: {},
@@ -135,6 +151,10 @@ function createEnvironment({
 					if (onCreateNode) {
 						onCreateNode.call(this, nodeType, localName)
 					}
+				}
+
+				get [Symbol.toStringTag]() {
+					return this.constructor.name
 				}
 
 				get previousElementSibling() {
@@ -310,12 +330,12 @@ function createEnvironment({
 
 					for (let i of capturePhase) {
 						runEventHandlers(i, event, cancelable)
-						if (!event.bubbles || event._stop) return !event.defaultPrevented
+						if (!event.bubbles || event.__undom_event_stop) return !event.defaultPrevented
 					}
 
 					for (let i of bubblePhase) {
 						runEventHandlers(i, event, cancelable)
-						if (!event.bubbles || event._stop) return !event.defaultPrevented
+						if (!event.bubbles || event.__undom_event_stop) return !event.defaultPrevented
 					}
 
 					return !event.defaultPrevented
@@ -329,22 +349,7 @@ function createEnvironment({
 
 	const makeCharacterData = named(
 		'CharacterData',
-		(_ = scope.Node) => class CharacterData extends makeNode(_) {
-			constructor(...args) {
-				super(...args)
-
-				// eslint-disable-next-line init-declarations
-				let data
-				Object.defineProperty(this, '__undom_data', {
-					get() {
-						return data
-					},
-					set(val) {
-						data = val
-					}
-				})
-			}
-
+		(_ = commonAncestors.CharacterData || scope.Node) => class CharacterData extends makeNode(_) {
 			get data() {
 				if (onGetData) onGetData.call(this, data => setData(this, data))
 
@@ -382,7 +387,7 @@ function createEnvironment({
 
 	const makeComment = named(
 		'Comment',
-		(_ = scope.CharacterData) => class Comment extends makeCharacterData(_) {
+		(_ = commonAncestors.Comment || scope.CharacterData) => class Comment extends makeCharacterData(_) {
 			constructor(data) {
 				super(8, '#comment')
 				this.data = data
@@ -393,7 +398,7 @@ function createEnvironment({
 
 	const makeText = named(
 		'Text',
-		(_ = scope.CharacterData) => class Text extends makeCharacterData(_) {
+		(_ = commonAncestors.Text || scope.CharacterData) => class Text extends makeCharacterData(_) {
 			constructor(text) {
 				super(3, '#text')					// TEXT_NODE
 				this.data = text
@@ -592,103 +597,150 @@ function createEnvironment({
 
 	const makeElement = named(
 		'Element',
-		(_ = scope.ParentNode, name) => class Element extends makeParentNode(_) {
-			constructor(nodeType, localName) {
-				super(nodeType || 1, localName || name)		// ELEMENT_NODE
-				this.attributes = []
-				if (!this.style) this.style = {}
-			}
+		(_ = commonAncestors.Element || scope.ParentNode, name) => {
+			const protoHasInnerHTML = 'innerHTML' in _.prototype
+			const protoHasOuterHTML = 'outerHTML' in _.prototype
 
-			get tagName() {
-				return this.nodeName
-			}
-
-			get className() {
-				return this.getAttribute('class')
-			}
-			set className(val) {
-				this.setAttribute('class', val)
-			}
-
-			// Actually innerHTML and outerHTML isn't DOM
-			// But we just put it here for some frameworks to work
-			// Or warn people not trying to treat undom like a browser
-			get innerHTML() {
-				const serializedChildren = []
-				let currentNode = this.firstChild
-				while (currentNode) {
-					serializedChildren.push(serialize(currentNode, true))
-					currentNode = currentNode.nextSibling
+			class Element extends makeParentNode(_) {
+				constructor(nodeType, localName) {
+					super(nodeType || 1, localName || name)		// ELEMENT_NODE
+					this.localName = localName || name
+					this.attributes = []
+					if (!this.style) this.style = {}
 				}
-				return ''.concat(...serializedChildren)
-			}
-			set innerHTML(value) {
-				// Setting innerHTML with an empty string just clears the element's children
-				if (value === '') {
-					let currentNode = this.firstChild
 
+				get tagName() {
+					return this.nodeName
+				}
+
+				get namespaceURI() {
+					return this.__undom_namespace
+				}
+
+				get className() {
+					return this.getAttribute('class')
+				}
+				set className(val) {
+					this.setAttribute('class', val)
+				}
+
+				// Actually innerHTML and outerHTML isn't DOM's property
+				// But we just put it here for some frameworks to work
+				// Or warn people not trying to treat undom like a browser
+				get innerHTML() {
+					if (protoHasInnerHTML) return super.innerHTML
+
+					const serializedChildren = []
+					let currentNode = this.firstChild
 					while (currentNode) {
-						const nextSibling = currentNode.nextSibling
-						currentNode.remove()
-						currentNode = nextSibling
+						serializedChildren.push(serialize(currentNode, true))
+						currentNode = currentNode.nextSibling
+					}
+					return ''.concat(...serializedChildren)
+				}
+				set innerHTML(value) {
+					if (protoHasInnerHTML) {
+						super.innerHTML = value
+						return
 					}
 
-					return
+					// Setting innerHTML with an empty string just clears the element's children
+					if (value === '') {
+						let currentNode = this.firstChild
+
+						while (currentNode) {
+							const nextSibling = currentNode.nextSibling
+							currentNode.remove()
+							currentNode = nextSibling
+						}
+
+						return
+					}
+
+					if (onSetInnerHTML) return onSetInnerHTML(this, value)
+
+					throw new Error(`[UNDOM] Failed to set 'innerHTML' on '${this.localName}': Not implemented.`)
 				}
 
-				if (onSetInnerHTML) return onSetInnerHTML(this, value)
+				get outerHTML() {
+					if (protoHasOuterHTML) return super.outerHTML
 
-				throw new Error(`[UNDOM] Failed to set 'innerHTML' on 'Node': Not implemented.`)
-			}
-
-			get outerHTML() {
-				return serialize(this, true)
-			}
-			set outerHTML(value) {
-				// Setting outehHTMO with an empty string just removes the element form it's parent
-				if (value === '') return this.remove()
-				if (onSetOuterHTML) return onSetOuterHTML.call(this, value)
-				throw new Error(`[UNDOM] Failed to set 'outerHTML' on 'Node': Not implemented.`)
-			}
-
-			get cssText() {
-				return this.getAttribute('style')
-			}
-			set cssText(val) {
-				this.setAttribute('style', val)
-			}
-
-			setAttribute(key, value) {
-				this.setAttributeNS(null, key, value)
-			}
-			getAttribute(key) {
-				return this.getAttributeNS(null, key)
-			}
-			removeAttribute(key) {
-				this.removeAttributeNS(null, key)
-			}
-
-			setAttributeNS(ns, name, value) {
-				updateAttributeNS(this, ns, name, value)
-
-				if (onSetAttributeNS) {
-					onSetAttributeNS.call(this, ns, name, value)
+					return serialize(this, true)
 				}
-			}
-			getAttributeNS(ns, name) {
-				if (onGetAttributeNS) {
-					onGetAttributeNS.call(this, ns, name, value => updateAttributeNS(this, ns, name, value))
+				set outerHTML(value) {
+					if (protoHasOuterHTML) {
+						super.outerHTML = value
+						return
+					}
+
+					// Setting outehHTMO with an empty string just removes the element form it's parent
+					if (value === '') return this.remove()
+					if (onSetOuterHTML) return onSetOuterHTML.call(this, value)
+					throw new Error(`[UNDOM] Failed to set 'outerHTML' on '${this.localName}': Not implemented.`)
 				}
 
-				let attr = findWhere(this.attributes, createAttributeFilter(ns, name), false, false)
-				return attr && attr.value
-			}
-			removeAttributeNS(ns, name) {
-				splice(this.attributes, createAttributeFilter(ns, name), false, false)
-
-				if (onRemoveAttributeNS) {
-					onRemoveAttributeNS.call(this, ns, name)
+				get cssText() {
+					return this.getAttribute('style')
 				}
+				set cssText(val) {
+					this.setAttribute('style', val)
+				}
+
+				setAttribute(key, value) {
+					this.setAttributeNS(null, key, value)
+				}
+				getAttribute(key) {
+					return this.getAttributeNS(null, key)
+				}
+				removeAttribute(key) {
+					this.removeAttributeNS(null, key)
+				}
+
+				setAttributeNS(ns, name, value) {
+					updateAttributeNS(this, ns, name, value)
+
+					if (onSetAttributeNS) {
+						onSetAttributeNS.call(this, ns, name, value)
+					}
+				}
+				getAttributeNS(ns, name) {
+					if (onGetAttributeNS) {
+						onGetAttributeNS.call(this, ns, name, value => updateAttributeNS(this, ns, name, value))
+					}
+
+					let attr = findWhere(this.attributes, createAttributeFilter(ns, name), false, false)
+					return attr && attr.value
+				}
+				removeAttributeNS(ns, name) {
+					splice(this.attributes, createAttributeFilter(ns, name), false, false)
+
+					if (onRemoveAttributeNS) {
+						onRemoveAttributeNS.call(this, ns, name)
+					}
+				}
+			}
+
+			return Element
+		}
+	)
+
+	const makeHTMLElement = named(
+		'HTMLElement',
+		(_ = commonAncestors.HTMLElement || scope.Element, name) => class HTMLElement extends makeElement(_, name) {
+			constructor(...args) {
+				super(...args)
+				this.__undom_namespace = HTMLNS
+			}
+		}
+	)
+
+
+	const makeSVGElement = named(
+		'SVGElement',
+		(_ = commonAncestors.SVGElement || scope.Element, name) => class SVGElement extends makeElement(_, name) {
+			constructor(...args) {
+				super(...args)
+				this.__undom_namespace = SVGNS
 			}
 		}
 	)
@@ -696,7 +748,7 @@ function createEnvironment({
 
 	const makeDocument = named(
 		'Document',
-		(_ = scope.ParentNode) => class Document extends makeParentNode(_) {
+		(_ = commonAncestors.Document || scope.ParentNode) => class Document extends makeParentNode(_) {
 			/* eslint-disable class-methods-use-this */
 			constructor() {
 				super(9, '#document')			// DOCUMENT_NODE
@@ -712,7 +764,7 @@ function createEnvironment({
 
 			createElementNS(ns, type) {
 				const element = this.createElement(type)
-				element.namespace = ns
+				element.__undom_namespace = ns
 				return element
 			}
 
@@ -725,7 +777,7 @@ function createEnvironment({
 			}
 
 			createEvent(type) {
-				return new Event(type)
+				return createEvent(type)
 			}
 
 			get defaultView() {
@@ -734,55 +786,39 @@ function createEnvironment({
 		}
 	)
 
-	const createDocument = () => {
+	const createDocument = (_initDocument = initDocument) => {
 		const document = new scope.Document()
-		if (!scope.document) scope.document = document
 
-		if (createBasicElements) {
-			document.documentElement = document.createElement('html')
-			document.head = document.createElement('head')
-			document.body = document.createElement('body')
-
-			document.documentElement.appendChild(document.head)
-			document.documentElement.appendChild(document.body)
-		}
+		if (_initDocument) _initDocument(document)
 
 		return document
 	}
 
 	scope.Event = Event
-	scope.Node = makeNode()
-	scope.CharacterData = makeCharacterData()
-	scope.Text = makeText()
-	scope.Comment = makeComment()
-	scope.ParentNode = makeParentNode()
-	scope.DocumentFragment = makeDocumentFragment()
-	scope.Element = makeElement()
-	scope.Document = makeDocument()
+	scope.Node = makeNode.master()
+	scope.CharacterData = makeCharacterData.master()
+	scope.Text = makeText.master()
+	scope.Comment = makeComment.master()
+	scope.ParentNode = makeParentNode.master()
+	scope.DocumentFragment = makeDocumentFragment.master()
+	scope.Element = makeElement.master()
+	scope.HTMLElement = makeHTMLElement.master()
+	scope.SVGElement = makeSVGElement.master()
+	scope.Document = makeDocument.master()
 
-	const registerElement = (name, val) => {
+	const registerElement = (name, val, isSVG) => {
 		if (scope[name]) throw new Error(`[UNDOM] Element type '${name}' has already been registered.`)
-		const element = makeElement(val, name)
+		const element = isSVG ? makeSVGElement(val, name) : makeHTMLElement(val, name)
 		scope[name] = element
-		if (preserveClassNameOnRegister) Object.defineProperties(element.prototype, {
-			typeName: {
-				get() {
-					return name
-				}
-			},
-			name: {
-				get() {
-					return name
-				}
-			}
-		})
+		if (preserveClassNameOnRegister) {
+			Object.defineProperty(element.prototype, 'name', { value: name })
+			Object.defineProperty(element, 'name', { value: name })
+		}
 
 		return element
 	}
 
-	const document = createDocument()
-
-	return {scope, document, createDocument, createElement, makeNode, makeParentNode, makeText, makeComment, makeDocumentFragment, makeElement, makeDocument, registerElement}
+	return {scope, createEvent, createDocument, createElement, makeNode, makeParentNode, makeText, makeComment, makeDocumentFragment, makeElement, makeHTMLElement, makeSVGElement, makeDocument, registerElement}
 }
 
-export {createEnvironment, Event, isElement, isNode}
+export {createEnvironment, createEvent, Event, isElement, isNode}
