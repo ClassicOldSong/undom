@@ -1,10 +1,10 @@
-# undom
+# undom-ng
 
-[![NPM](https://img.shields.io/npm/v/@utls/undom-ef.svg?style=flat)](https://www.npmjs.org/package/@utls/undom-ef)
+[![NPM](https://img.shields.io/npm/v/undom-ng.svg?style=flat)](https://www.npmjs.org/package/undom-ng)
 
-### **Minimally viable DOM Document implementation for ef.js**
+### **The Next Gen minimally viable DOM Document implementation**
 
-**NOTE** THIS IS A FORK SPECIALLY FOR [ef.js](https://github.com/TheNeuronProject/ef.js) WITH SOME MINOR CHANGES THAT MIGHT NOT FIT THE GOAL OF THE [ORIGINAL PROJECT](https://github.com/developit/undom).
+**NOTE** THIS IS A FORK OF UNDOM WITH SOME HUGE CHANGES THAT MIGHT NOT FIT THE GOAL OF THE [ORIGINAL PROJECT](https://github.com/developit/undom).
 
 > A bare-bones HTML DOM in a box. If you want the DOM but not a parser, this might be for you.
 >
@@ -27,7 +27,7 @@ The intent to keep things as simple as possible means undom lacks some DOM featu
 
 Via npm:
 
-`npm install @utls/undom-ef`
+`npm install undom-ng`
 
 
 ---
@@ -43,7 +43,7 @@ Via npm:
 ## Usage
 
 ```js
-import {geDOMImpl} from '@utls/undom-ef'
+import {geDOMImpl} from 'undom-ng'
 
 const {document} = getDOMImpl()
 
@@ -55,7 +55,7 @@ document.body.appendChild(foo);
 with ef.js
 
 ```js
-import {getDOMImpl} from '@utls/undom-ef'
+import {getDOMImpl} from 'undom-ng'
 import {setDOMImpl} from 'ef.js'
 import Tpl from 'tpl.eft'
 
@@ -74,7 +74,7 @@ tpl.$mount({target: domImpl.document.body})
 ## Serialize to HTML
 
 ```js
-import {serialize} from '@utls/undom-ef'
+import {serialize} from 'undom-ng'
 
 console.log(serialize(element))
 ```

@@ -1,9 +1,9 @@
 {
-  "name": "@utls/undom-ef",
-  "amdName": "undom-ef",
-  "version": "0.5.0",
-  "description": "Minimally viable DOM Document implementation for ef.js.",
-  "main": "src/undom-ef.js",
+  "name": "undom-ng",
+  "amdName": "undom-ng",
+  "version": "1.0.0",
+  "description": "The Next Gen minimally viable DOM Document implementation",
+  "main": "src/undom-ng.js",
   "type": "module",
   "scripts": {},
   "keywords": [
@@ -11,9 +11,9 @@
     "document",
     "shim"
   ],
-  "repository": "ClassicOldSong/undom-ef",
+  "repository": "ClassicOldSong/undom-ng",
   "author": "Yukino Song <yukino@yuki.network>",
   "license": "MIT",
-  "bugs": "https://github.com/ClassicOldSong/undom-ef/issues",
-  "homepage": "https://github.com/ClassicOldSong/undom-ef"
+  "bugs": "https://github.com/ClassicOldSong/undom-ng/issues",
+  "homepage": "https://github.com/ClassicOldSong/undom-ng"
 }

@@ -44,7 +44,7 @@ class Event {
 	}
 	preventDefault() {
 		if (this.__undom_event_passive) {
-			console.error('[UNDOM] Unable to preventDefault inside passive event listener invocation.')
+			console.error('[UNDOM-NG] Unable to preventDefault inside passive event listener invocation.')
 			return
 		}
 
@@ -82,7 +82,7 @@ const isElement = node => node && node.__undom_is_Element || false
 const isNode = node => node && node.__undom_is_Node || false
 
 const setData = (self, data) => {
-	self.__undom_data = String(data)
+	self.__undom_data = data
 }
 
 const defaultInitDocument = (document) => {
@@ -100,7 +100,7 @@ const defaultInitDocument = (document) => {
 const updateAttributeNS = (self, ns, name, value) => {
 	let attr = findWhere(self.attributes, createAttributeFilter(ns, name), false, false)
 	if (!attr) self.attributes.push(attr = { ns, name })
-	attr.value = String(value)
+	attr.value = value
 }
 
 function createEnvironment({
@@ -129,7 +129,7 @@ function createEnvironment({
 
 	const createElement = (type) => {
 		if (scope[type]) return new scope[type]()
-		if (!silent) console.warn(`[UNDOM] Element type '${type}' is not registered.`)
+		if (!silent) console.warn(`[UNDOM-NG] Element type '${type}' is not registered.`)
 		return new scope.HTMLElement(null, type)
 	}
 
@@ -488,7 +488,7 @@ function createEnvironment({
 			}
 
 			insertBefore(child, ref) {
-				if (ref && ref.parentNode !== this) throw new Error(`[UNDOM] Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node.`)
+				if (ref && ref.parentNode !== this) throw new Error(`[UNDOM-NG] Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node.`)
 				if (child === ref) return
 
 				if (child.nodeType === 11) {
@@ -554,7 +554,7 @@ function createEnvironment({
 			}
 
 			replaceChild(child, oldChild) {
-				if (oldChild.parentNode !== this) throw new Error(`[UNDOM] Failed to execute 'replaceChild' on 'Node': The node to be replaced is not a child of this node.`)
+				if (oldChild.parentNode !== this) throw new Error(`[UNDOM-NG] Failed to execute 'replaceChild' on 'Node': The node to be replaced is not a child of this node.`)
 
 				const ref = oldChild.nextSibling
 				oldChild.remove()
@@ -624,7 +624,7 @@ function createEnvironment({
 					this.setAttribute('class', val)
 				}
 
-				// Actually innerHTML and outerHTML isn't DOM's property
+				// Actually innerHTML and outerHTML is out of DOM's spec
 				// But we just put it here for some frameworks to work
 				// Or warn people not trying to treat undom like a browser
 				get innerHTML() {
@@ -659,7 +659,7 @@ function createEnvironment({
 
 					if (onSetInnerHTML) return onSetInnerHTML(this, value)
 
-					throw new Error(`[UNDOM] Failed to set 'innerHTML' on '${this.localName}': Not implemented.`)
+					throw new Error(`[UNDOM-NG] Failed to set 'innerHTML' on '${this.localName}': Not implemented.`)
 				}
 
 				get outerHTML() {
@@ -676,7 +676,7 @@ function createEnvironment({
 					// Setting outehHTMO with an empty string just removes the element form it's parent
 					if (value === '') return this.remove()
 					if (onSetOuterHTML) return onSetOuterHTML.call(this, value)
-					throw new Error(`[UNDOM] Failed to set 'outerHTML' on '${this.localName}': Not implemented.`)
+					throw new Error(`[UNDOM-NG] Failed to set 'outerHTML' on '${this.localName}': Not implemented.`)
 				}
 
 				get cssText() {
@@ -807,13 +807,10 @@ function createEnvironment({
 	scope.Document = makeDocument.master()
 
 	const registerElement = (name, val, isSVG) => {
-		if (scope[name]) throw new Error(`[UNDOM] Element type '${name}' has already been registered.`)
+		if (scope[name]) throw new Error(`[UNDOM-NG] Element type '${name}' has already been registered.`)
 		const element = isSVG ? makeSVGElement(val, name) : makeHTMLElement(val, name)
 		scope[name] = element
-		if (preserveClassNameOnRegister) {
-			Object.defineProperty(element.prototype, 'name', { value: name })
-			Object.defineProperty(element, 'name', { value: name })
-		}
+		if (preserveClassNameOnRegister) Object.defineProperty(element, 'name', { value: name })
 
 		return element
 	}
