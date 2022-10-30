@@ -488,6 +488,11 @@ function createEnvironment({
 			}
 
 			insertBefore(child, ref) {
+				if (!child.__undom_is_Node) {
+					if (onInsertBefore) onInsertBefore.call(this, child, ref)
+					return
+				}
+
 				if (ref && ref.parentNode !== this) throw new Error(`[UNDOM-NG] Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node.`)
 				if (child === ref) return
 
@@ -565,6 +570,11 @@ function createEnvironment({
 			}
 
 			removeChild(child) {
+				if (!child.__undom_is_Node) {
+					if (onRemoveChild) onRemoveChild.call(this, child)
+					return
+				}
+
 				if (child.parentNode !== this) return
 
 				if (this.firstChild === child) this.firstChild = child.nextSibling
