@@ -570,12 +570,10 @@ function createEnvironment({
 			}
 
 			removeChild(child) {
-				if (!child.__undom_is_Node) {
+				if (!child.__undom_is_Node || child.parentNode !== this) {
 					if (onRemoveChild) onRemoveChild.call(this, child)
 					return
 				}
-
-				if (child.parentNode !== this) return
 
 				if (this.firstChild === child) this.firstChild = child.nextSibling
 				if (this.lastChild === child) this.lastChild = child.previousSibling
