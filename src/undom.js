@@ -153,10 +153,6 @@ function createEnvironment({
 					}
 				}
 
-				get [Symbol.toStringTag]() {
-					return this.constructor.name
-				}
-
 				get previousElementSibling() {
 					let currentNode = this.previousSibling
 					while (currentNode) {
@@ -342,6 +338,13 @@ function createEnvironment({
 				}
 			}
 
+			// Fix buble: https://github.com/bublejs/buble/blob/bac51a9c2793011987d1d17efcda03f70e4b540a/src/program/types/ClassBody.js#L134
+			Object.defineProperty(Node, Symbol.toStringTag, {
+				get() {
+					return this.constructor.name
+				}
+			})
+
 			return Node
 		}
 	)
@@ -520,8 +523,11 @@ function createEnvironment({
 							lastChild.nextSibling = null
 						}
 
-						if (!firstChild.previousSibling) this.firstChild = firstChild
-						if (!lastChild.nextSibling) this.lastChild = lastChild
+						if (firstChild.previousSibling) firstChild.previousSibling.nextSibling = firstChild
+						else this.firstChild = firstChild
+
+						if (lastChild.nextSibling) lastChild.nextSibling.previousSibling = lastChild
+						else this.lastChild = lastChild
 
 						child.firstChild = null
 						child.lastChild = null
