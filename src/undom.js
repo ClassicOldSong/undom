@@ -5,7 +5,7 @@ import {
 	findWhere,
 	createAttributeFilter,
 	named
-} from './util.js'
+} from './utils.js'
 import serialize from './serializer.js'
 
 /*
