@@ -143,6 +143,10 @@ function createEnvironment({
 					this.nodeType = nodeType
 					if (localName) this.nodeName = localName[0] === '#' ? localName : String(localName).toUpperCase()
 
+					this.parentNode = null
+					this.nextSibling = null
+					this.previousSibling = null
+
 					this.__undom_eventHandlers = {
 						capturePhase: {},
 						bubblePhase: {}
@@ -415,22 +419,16 @@ function createEnvironment({
 		(_ = scope.Node) => class ParentNode extends makeNode(_) {
 
 			get firstElementChild() {
-				let currentNode = this.firstChild
-				while (currentNode) {
-					if (isElement(currentNode)) return currentNode
-					currentNode = currentNode.nextSibling
-				}
-
-				return null
+				const currentNode = this.firstChild
+				if (!currentNode) return null
+				if (isElement(currentNode)) return currentNode
+				return currentNode.nextElementSibling
 			}
 			get lastElementChild() {
-				let currentNode = this.lastChild
-				while (currentNode) {
-					if (isElement(currentNode)) return currentNode
-					currentNode = currentNode.previousSibling
-				}
-
-				return null
+				const currentNode = this.lastChild
+				if (!currentNode) return null
+				if (isElement(currentNode)) return currentNode
+				return currentNode.previousElementSibling
 			}
 
 			get childNodes() {
