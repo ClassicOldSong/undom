@@ -360,7 +360,7 @@ function createEnvironment({
 			get data() {
 				if (onGetData) onGetData.call(this, data => setData(this, data))
 
-				return this.__undom_data
+				return `${this.__undom_data}`
 			}
 			set data(data) {
 				setData(this, data)
@@ -382,7 +382,7 @@ function createEnvironment({
 				return this.data
 			}
 			set textContent(text) {
-				this.data = `${text}`
+				this.data = text
 			}
 
 			appendData(data) {
