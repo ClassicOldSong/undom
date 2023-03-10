@@ -413,6 +413,18 @@ function createEnvironment({
 		}
 	)
 
+	const clearChildren = (self) => {
+		if (!self.hasChildNodes()) return
+
+		let currentNode = self.firstChild
+
+		while (currentNode) {
+			const nextSibling = currentNode.nextSibling
+			currentNode.remove()
+			currentNode = nextSibling
+		}
+	}
+
 
 	const makeParentNode = named(
 		'ParentNode',
@@ -485,7 +497,14 @@ function createEnvironment({
 				return ''.concat(...textArr)
 			}
 			set textContent(val) {
-				if (onSetTextContent) onSetTextContent.call(this, val)
+				clearChildren(this)
+
+				if (onSetTextContent) {
+					const skipDefault = onSetTextContent.call(this, val)
+					if (skipDefault) return
+				}
+
+				if (val !== '') this.appendChild(new scope.Text(val))
 			}
 
 			insertBefore(child, ref) {
@@ -657,17 +676,7 @@ function createEnvironment({
 					}
 
 					// Setting innerHTML with an empty string just clears the element's children
-					if (value === '') {
-						let currentNode = this.firstChild
-
-						while (currentNode) {
-							const nextSibling = currentNode.nextSibling
-							currentNode.remove()
-							currentNode = nextSibling
-						}
-
-						return
-					}
+					if (value === '') return clearChildren(this)
 
 					if (onSetInnerHTML) return onSetInnerHTML(this, value)
 
