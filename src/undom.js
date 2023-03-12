@@ -52,7 +52,7 @@ class Event {
 	}
 }
 
-const createEvent = eventName => new Event(eventName)
+const createEvent = (eventName, options) => new Event(eventName, options)
 
 // eslint-disable-next-line max-params
 const getEventDescriptor = (target, type, handler, options) => {
@@ -797,8 +797,8 @@ function createEnvironment({
 				return new scope.Text(text)
 			}
 
-			createEvent(type) {
-				return createEvent(type)
+			createEvent(type, options) {
+				return createEvent(type, options)
 			}
 
 			get defaultView() {
