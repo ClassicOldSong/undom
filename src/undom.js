@@ -208,7 +208,7 @@ function createEnvironment({
 						if (deep) {
 							let currentNode = this.firstChild
 							while (currentNode) {
-								clonedNode.appendChild(currentNode.clonedNode(deep))
+								clonedNode.appendChild(currentNode.cloneNode(deep))
 								currentNode = currentNode.nextSibling
 							}
 						}
