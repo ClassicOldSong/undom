@@ -520,13 +520,14 @@ function createEnvironment({
 					const {firstChild, lastChild} = child
 
 					if (firstChild && lastChild) {
+						const insertedChildList = []
 						let currentNode = firstChild
 						while (currentNode) {
 							const nextSibling = currentNode.nextSibling
 
 							currentNode.parentNode = this
 							if (onRemoveChild) onRemoveChild.call(child, currentNode)
-							if (onInsertBefore) onInsertBefore.call(this, currentNode, ref)
+							if (onInsertBefore) insertedChildList.push(currentNode)
 
 							currentNode = nextSibling
 						}
@@ -548,6 +549,12 @@ function createEnvironment({
 
 						child.firstChild = null
 						child.lastChild = null
+
+						if (insertedChildList.length) {
+							for (let currentNode of insertedChildList) {
+								onInsertBefore.call(this, currentNode, ref)
+							}
+						}
 					}
 				} else {
 					child.remove()
