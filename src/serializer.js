@@ -24,7 +24,7 @@ const serializerRegexp = /[&'"<>]/g
 const enc = s => `${s}`.replace(serializerRegexp, a => `&#${a.codePointAt(0)};`)
 
 const attr = (a) => {
-	if (a.value) {
+	if (a.value !== '') {
 		if (a.ns) {
 			return ` ${a.ns}:${a.name}="${enc(a.value)}"`
 		}
