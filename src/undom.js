@@ -137,8 +137,8 @@ function createEnvironment({
 		'Node',
 		(_ = commonAncestors.Node || Object) => {
 			class Node extends _ {
-				constructor(nodeType, localName) {
-					super()
+				constructor(nodeType, localName, ...args) {
+					super(...args)
 
 					this.nodeType = nodeType
 					if (localName) this.nodeName = localName[0] === '#' ? localName : String(localName).toUpperCase()
@@ -778,8 +778,8 @@ function createEnvironment({
 		'Document',
 		(_ = commonAncestors.Document || scope.ParentNode) => class Document extends makeParentNode(_) {
 			/* eslint-disable class-methods-use-this */
-			constructor() {
-				super(9, '#document')			// DOCUMENT_NODE
+			constructor(...args) {
+				super(9, '#document', ...args)			// DOCUMENT_NODE
 			}
 
 			createDocumentFragment() {
@@ -814,10 +814,10 @@ function createEnvironment({
 		}
 	)
 
-	const createDocument = (_initDocument = initDocument) => {
-		const document = new scope.Document()
+	const createDocument = (...args) => {
+		const document = new scope.Document(...args)
 
-		if (_initDocument) _initDocument(document)
+		if (initDocument) initDocument(document)
 
 		return document
 	}
