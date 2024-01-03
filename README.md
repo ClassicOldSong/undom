@@ -43,29 +43,15 @@ Via npm:
 ## Usage
 
 ```js
-import {geDOMImpl} from 'undom-ng'
+import { createEnvironment } from 'undom-ng'
 
-const {document} = getDOMImpl()
+const { createDocument } = createEnvironment()
+
+const document = createDocument()
 
 let foo = document.createElement('foo')
 foo.appendChild(document.createTextNode('Hello, World!'))
 document.body.appendChild(foo);
-```
-
-with ef.js
-
-```js
-import {getDOMImpl} from 'undom-ng'
-import {setDOMImpl} from 'ef.js'
-import Tpl from 'tpl.eft'
-
-const domImpl = getDOMImpl()
-
-setDOMImpl(domImpl)
-
-const tpl = new Tpl()
-
-tpl.$mount({target: domImpl.document.body})
 ```
 
 ---
@@ -74,7 +60,7 @@ tpl.$mount({target: domImpl.document.body})
 ## Serialize to HTML
 
 ```js
-import {serialize} from 'undom-ng'
+import { serialize } from 'undom-ng'
 
 console.log(serialize(element))
 ```
