@@ -103,9 +103,20 @@ const updateAttributeNS = (self, ns, name, value) => {
 	attr.value = value
 }
 
-function createEnvironment({
+const getOwnerDocumentSetter = (onChangeOwnerDocument) => {
+	if (onChangeOwnerDocument) return (node, ownerDocument) => {
+		if (node.__undom_owner_document === ownerDocument) return
+		if (onChangeOwnerDocument) onChangeOwnerDocument.call(node, ownerDocument, node.ownerDocument)
+		node.__undom_owner_document = ownerDocument
+	}
+
+	return (node, ownerDocument) => {
+		node.__undom_owner_document = ownerDocument
+	}
+}
+
+const createEnvironment = ({
 	silent = true,
-	scope = {},
 	commonAncestors = {},
 	initDocument = defaultInitDocument,
 	preserveClassNameOnRegister = false,
@@ -121,105 +132,34 @@ function createEnvironment({
 	onSetAttributeNS,
 	onGetAttributeNS,
 	onRemoveAttributeNS,
+	onChangeOwnerDocument,
 	onAddEventListener,
 	onAddedEventListener,
 	onRemoveEventListener,
 	onRemovedEventListener
-} = {}) {
+} = {}) => {
 
-	const createElement = (type) => {
-		if (scope[type]) return new scope[type]()
+	const scope = {}
+
+	const createElement = (ownerDocument, type, ...args) => {
+		if (scope[type]) return new scope[type](ownerDocument, ...args)
 		if (!silent) console.warn(`[UNDOM-NG] Element type '${type}' is not registered.`)
-		return new scope.HTMLElement(null, type)
+		return new scope.HTMLElement(ownerDocument, null, type)
 	}
 
-	const makeNode = named(
-		'Node',
-		(_ = commonAncestors.Node || Object) => {
-			class Node extends _ {
-				constructor(nodeType, localName, ...args) {
+	const setOwnerDocument = getOwnerDocumentSetter(onChangeOwnerDocument)
+
+	const makeEventTarget = named(
+		'EventTarget',
+		(_ = commonAncestors.EventTarget || Object) => {
+			class EventTarget extends _ {
+				constructor(...args) {
 					super(...args)
-
-					this.nodeType = nodeType
-					if (localName) this.nodeName = localName[0] === '#' ? localName : String(localName).toUpperCase()
-
-					this.parentNode = null
-					this.nextSibling = null
-					this.previousSibling = null
 
 					this.__undom_eventHandlers = {
 						capturePhase: {},
 						bubblePhase: {}
 					}
-
-					if (onCreateNode) {
-						onCreateNode.call(this, nodeType, localName)
-					}
-				}
-
-				get previousElementSibling() {
-					let currentNode = this.previousSibling
-					while (currentNode) {
-						if (isElement(currentNode)) return currentNode
-						currentNode = currentNode.previousSibling
-					}
-
-					return null
-				}
-				get nextElementSibling() {
-					let currentNode = this.nextSibling
-					while (currentNode) {
-						if (isElement(currentNode)) return currentNode
-						currentNode = currentNode.nextSibling
-					}
-
-					return null
-				}
-
-				remove() {
-					if (this.parentNode) this.parentNode.removeChild(this)
-				}
-
-				replaceWith(...nodes) {
-					if (!this.parentNode) return
-
-					const ref = this.nextSibling
-					const parent = this.parentNode
-					for (let i of nodes) {
-						i.remove()
-						parent.insertBefore(i, ref)
-					}
-				}
-
-				cloneNode(deep) {
-					let clonedNode = null
-
-					if (this.__undom_is_ParentNode) {
-						if (this.nodeType === 9) clonedNode = new scope.Document()
-						else if (this.nodeType === 11) clonedNode = new scope.DocumentFragment()
-						else {
-							clonedNode = createElement(this.localName)
-							const sourceAttrs = this.attributes
-							for (let {ns, name, value} of sourceAttrs) {
-								clonedNode.setAttributeNS(ns, name, value)
-							}
-						}
-
-						if (deep) {
-							let currentNode = this.firstChild
-							while (currentNode) {
-								clonedNode.appendChild(currentNode.cloneNode(deep))
-								currentNode = currentNode.nextSibling
-							}
-						}
-					} else if (this.nodeType === 3) clonedNode = new scope.Text(this.nodeValue)
-					else if (this.nodeType === 8) clonedNode = new scope.Comment(this.nodeValue)
-
-					return clonedNode
-				}
-
-				hasChildNodes() {
-					return !!this.firstChild
 				}
 
 				addEventListener(...args) {
@@ -268,6 +208,7 @@ function createEnvironment({
 						}
 					}
 				}
+
 				removeEventListener(...args) {
 					// Method could be called before constructor
 					if (!this.__undom_eventHandlers) {
@@ -342,6 +283,102 @@ function createEnvironment({
 				}
 			}
 
+			return EventTarget
+		}
+	)
+
+	const makeNode = named(
+		'Node',
+		(_ = commonAncestors.Node || scope.EventTarget) => {
+			class Node extends makeEventTarget(_) {
+				// eslint-disable-next-line max-params
+				constructor(ownerDocument = null, nodeType, localName, ...args) {
+					super(ownerDocument, ...args)
+
+					this.nodeType = nodeType
+					if (localName) this.nodeName = localName[0] === '#' ? localName : String(localName).toUpperCase()
+
+					this.parentNode = null
+					this.nextSibling = null
+					this.previousSibling = null
+
+					this.__undom_owner_document = ownerDocument
+
+					if (onCreateNode) {
+						onCreateNode.call(this, nodeType, localName)
+					}
+				}
+
+				get ownerDocument() {
+					return this.__undom_owner_document
+				}
+
+				get previousElementSibling() {
+					let currentNode = this.previousSibling
+					while (currentNode) {
+						if (isElement(currentNode)) return currentNode
+						currentNode = currentNode.previousSibling
+					}
+
+					return null
+				}
+				get nextElementSibling() {
+					let currentNode = this.nextSibling
+					while (currentNode) {
+						if (isElement(currentNode)) return currentNode
+						currentNode = currentNode.nextSibling
+					}
+
+					return null
+				}
+
+				remove() {
+					if (this.parentNode) this.parentNode.removeChild(this)
+				}
+
+				replaceWith(...nodes) {
+					if (!this.parentNode) return
+
+					const ref = this.nextSibling
+					const parent = this.parentNode
+					for (let i of nodes) {
+						i.remove()
+						parent.insertBefore(i, ref)
+					}
+				}
+
+				cloneNode(deep) {
+					let clonedNode = null
+
+					if (this.__undom_is_ParentNode) {
+						if (this.nodeType === 9) clonedNode = new scope.Document(...this.__undom_document_init_args)
+						else if (this.nodeType === 11) clonedNode = new scope.DocumentFragment(this.ownerDocument)
+						else {
+							clonedNode = createElement(this.ownerDocument, this.localName)
+							const sourceAttrs = this.attributes
+							for (let {ns, name, value} of sourceAttrs) {
+								clonedNode.setAttributeNS(ns, name, value)
+							}
+						}
+
+						if (deep) {
+							let currentNode = this.firstChild
+							while (currentNode) {
+								clonedNode.appendChild(currentNode.cloneNode(deep))
+								currentNode = currentNode.nextSibling
+							}
+						}
+					} else if (this.nodeType === 3) clonedNode = new scope.Text(this.ownerDocument, this.nodeValue)
+					else if (this.nodeType === 8) clonedNode = new scope.Comment(this.ownerDocument, this.nodeValue)
+
+					return clonedNode
+				}
+
+				hasChildNodes() {
+					return !!this.firstChild
+				}
+			}
+
 			// Fix buble: https://github.com/bublejs/buble/blob/bac51a9c2793011987d1d17efcda03f70e4b540a/src/program/types/ClassBody.js#L134
 			Object.defineProperty(Node, Symbol.toStringTag, {
 				get() {
@@ -395,8 +432,8 @@ function createEnvironment({
 	const makeComment = named(
 		'Comment',
 		(_ = commonAncestors.Comment || scope.CharacterData) => class Comment extends makeCharacterData(_) {
-			constructor(data) {
-				super(8, '#comment')
+			constructor(ownerDocument, data, ...args) {
+				super(ownerDocument, 8, '#comment', ...args)
 				this.data = data
 			}
 		}
@@ -406,8 +443,8 @@ function createEnvironment({
 	const makeText = named(
 		'Text',
 		(_ = commonAncestors.Text || scope.CharacterData) => class Text extends makeCharacterData(_) {
-			constructor(text) {
-				super(3, '#text')					// TEXT_NODE
+			constructor(ownerDocument, text, ...args) {
+				super(ownerDocument, 3, '#text', ...args)
 				this.data = text
 			}
 		}
@@ -507,6 +544,7 @@ function createEnvironment({
 				if (val !== '') this.appendChild(new scope.Text(val))
 			}
 
+			// eslint-disable-next-line complexity
 			insertBefore(child, ref) {
 				if (!child.__undom_is_Node) {
 					if (onInsertBefore) onInsertBefore.call(this, child, ref)
@@ -515,6 +553,10 @@ function createEnvironment({
 
 				if (ref && ref.parentNode !== this) throw new Error(`[UNDOM-NG] Failed to execute 'insertBefore' on 'Node': The node before which the new node is to be inserted is not a child of this node.`)
 				if (child === ref) return
+
+				let ownerDocument = this.ownerDocument
+				// eslint-disable-next-line consistent-this
+				if (this.nodeType === 9) ownerDocument = this
 
 				if (child.nodeType === 11) {
 					const {firstChild, lastChild} = child
@@ -528,6 +570,7 @@ function createEnvironment({
 							currentNode.parentNode = this
 							if (onRemoveChild) onRemoveChild.call(child, currentNode)
 							if (onInsertBefore) insertedChildList.push(currentNode)
+							setOwnerDocument(currentNode, ownerDocument)
 
 							currentNode = nextSibling
 						}
@@ -572,6 +615,8 @@ function createEnvironment({
 					if (child.previousSibling) child.previousSibling.nextSibling = child
 					else this.firstChild = child
 				}
+
+				setOwnerDocument(child, ownerDocument)
 
 				if (onInsertBefore) onInsertBefore.call(this, child, ref)
 
@@ -626,8 +671,8 @@ function createEnvironment({
 	const makeDocumentFragment = named(
 		'DocumentFragment',
 		(_ = scope.ParentNode) => class DocumentFragment extends makeParentNode(_) {
-			constructor() {
-				super(11, '#document-fragment')
+			constructor(ownerDocument, ...args) {
+				super(ownerDocument, 11, '#document-fragment', ...args)
 			}
 		}
 	)
@@ -640,11 +685,13 @@ function createEnvironment({
 			const protoHasOuterHTML = 'outerHTML' in _.prototype
 
 			class Element extends makeParentNode(_) {
-				constructor(nodeType, localName) {
-					super(nodeType || 1, localName || name)		// ELEMENT_NODE
+				// eslint-disable-next-line max-params
+				constructor(ownerDocument, nodeType, localName, ...args) {
+					super(ownerDocument, nodeType || 1, localName || name, ...args)
 					this.localName = localName || name
 					this.attributes = []
 					if (!this.style) this.style = {}
+					this.__undom_namespace = null
 				}
 
 				get tagName() {
@@ -683,9 +730,15 @@ function createEnvironment({
 					}
 
 					// Setting innerHTML with an empty string just clears the element's children
-					if (value === '') return clearChildren(this)
+					if (value === '') {
+						clearChildren(this)
+						return
+					}
 
-					if (onSetInnerHTML) return onSetInnerHTML(this, value)
+					if (onSetInnerHTML) {
+						onSetInnerHTML(this, value)
+						return
+					}
 
 					throw new Error(`[UNDOM-NG] Failed to set 'innerHTML' on '${this.localName}': Not implemented.`)
 				}
@@ -702,8 +755,14 @@ function createEnvironment({
 					}
 
 					// Setting outehHTMO with an empty string just removes the element form it's parent
-					if (value === '') return this.remove()
-					if (onSetOuterHTML) return onSetOuterHTML.call(this, value)
+					if (value === '') {
+						this.remove()
+						return
+					}
+					if (onSetOuterHTML) {
+						onSetOuterHTML.call(this, value)
+						return
+					}
 					throw new Error(`[UNDOM-NG] Failed to set 'outerHTML' on '${this.localName}': Not implemented.`)
 				}
 
@@ -774,55 +833,86 @@ function createEnvironment({
 	)
 
 
-	const makeDocument = named(
-		'Document',
-		(_ = commonAncestors.Document || scope.ParentNode) => class Document extends makeParentNode(_) {
-			/* eslint-disable class-methods-use-this */
-			constructor(...args) {
-				super(9, '#document', ...args)			// DOCUMENT_NODE
-			}
-
-			createDocumentFragment() {
-				return new scope.DocumentFragment()
-			}
-
-			createElement(type) {
-				return createElement(type)
-			}
-
-			createElementNS(ns, type) {
-				const element = this.createElement(type)
-				element.__undom_namespace = ns
-				return element
-			}
-
-			createComment(data) {
-				return new scope.Comment(data)
-			}
-
-			createTextNode(text) {
-				return new scope.Text(text)
-			}
-
-			createEvent(type, options) {
-				return createEvent(type, options)
-			}
-
-			get defaultView() {
-				return scope
-			}
-		}
-	)
-
-	const createDocument = (...args) => {
+	const createDocument = (namespaceURI, qualifiedNameStr, ...args) => {
 		const document = new scope.Document(...args)
+
+		document.__undom_namespace = namespaceURI
+
+		const documentElement = createElement(document, qualifiedNameStr)
+		document.appendChild(documentElement)
 
 		if (initDocument) initDocument(document)
 
 		return document
 	}
 
+	const DOMImplementation = class DOMImplementation {
+		createDocument
+	}
+
+	const makeDocument = named(
+		'Document',
+		(_ = commonAncestors.Document || scope.ParentNode) => class Document extends makeParentNode(_) {
+			constructor(...args) {
+				super(null, 9, '#document', ...args)
+				this.__undom_implementation = new DOMImplementation()
+				this.__undom_document_init_args = args
+			}
+
+			insertBefore(child, ref) {
+				if (this.firstChild ||
+					(isNode(child) &&
+						child.nodeType === 11 &&
+						(child.firstChild !== child.lastChild)
+					)
+				) throw new Error('[UNDOM-NG] Only one element on document allowed.')
+				super.insertBefore(child, ref)
+			}
+
+			createDocumentFragment() {
+				return new scope.DocumentFragment(this)
+			}
+
+			createElement(type, ...args) {
+				return createElement(this, type, ...args)
+			}
+
+			createElementNS(ns, type, ...args) {
+				const element = this.createElement(type, ...args)
+				element.__undom_namespace = ns
+				return element
+			}
+
+			createComment(data) {
+				return new scope.Comment(this, data)
+			}
+
+			createTextNode(text) {
+				return new scope.Text(this, text)
+			}
+
+			// eslint-disable-next-line class-methods-use-this
+			createEvent(type, options) {
+				return createEvent(type, options)
+			}
+
+			get documentElement() {
+				return this.firstChild
+			}
+
+			// eslint-disable-next-line class-methods-use-this
+			get defaultView() {
+				return scope
+			}
+
+			get implementation() {
+				return this.__undom_implementation
+			}
+		}
+	)
+
 	scope.Event = Event
+	scope.EventTarget = makeEventTarget.master()
 	scope.Node = makeNode.master()
 	scope.CharacterData = makeCharacterData.master()
 	scope.Text = makeText.master()
@@ -834,16 +924,18 @@ function createEnvironment({
 	scope.SVGElement = makeSVGElement.master()
 	scope.Document = makeDocument.master()
 
-	const registerElement = (name, val, isSVG) => {
+	// eslint-disable-next-line max-params
+	const registerElement = (name, value, isSVG, isHTML) => {
 		if (scope[name]) throw new Error(`[UNDOM-NG] Element type '${name}' has already been registered.`)
-		const element = isSVG ? makeSVGElement(val, name) : makeHTMLElement(val, name)
+		// eslint-disable-next-line no-nested-ternary
+		const element = isSVG ? makeSVGElement(value, name) : isHTML ? makeHTMLElement(value, name) : makeElement(value, name)
 		scope[name] = element
 		if (preserveClassNameOnRegister) Object.defineProperty(element, 'name', { value: name })
 
 		return element
 	}
 
-	return {scope, createEvent, createDocument, createElement, makeNode, makeParentNode, makeText, makeComment, makeDocumentFragment, makeElement, makeHTMLElement, makeSVGElement, makeDocument, registerElement}
+	return {scope, createEvent, createDocument, makeEventTarget, makeNode, makeParentNode, makeText, makeComment, makeDocumentFragment, makeElement, makeHTMLElement, makeSVGElement, makeDocument, registerElement, DOMImplementation}
 }
 
 export {createEnvironment, createEvent, Event, isElement, isNode}
