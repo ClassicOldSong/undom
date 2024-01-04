@@ -43,13 +43,13 @@ Via npm:
 ## Usage
 
 ```js
-import { createEnvironment } from 'undom-ng'
+import { createEnvironment, HTMLNS } from 'undom-ng'
 
 const { createDocument } = createEnvironment()
 
-const document = createDocument()
+const document = createDocument(HTMLNS, 'html')
 
-let foo = document.createElement('foo')
+const foo = document.createElementNS(HTMLNS, 'foo')
 foo.appendChild(document.createTextNode('Hello, World!'))
 document.body.appendChild(foo);
 ```

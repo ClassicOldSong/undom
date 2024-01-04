@@ -8,6 +8,8 @@ import {
 } from './utils.js'
 import serialize from './serializer.js'
 
+import { HTMLNS, SVGNS } from './namespaces.js'
+
 /*
 const NODE_TYPES = {
 	ELEMENT_NODE: 1,
@@ -21,9 +23,6 @@ const NODE_TYPES = {
 	DOCUMENT_FRAGMENT_NODE: 11
 }
 */
-
-const HTMLNS = 'http://www.w3.org/1999/xhtml'
-const SVGNS = 'http://www.w3.org/2000/svg'
 
 class Event {
 	constructor(type, {bubbles, captures, cancelable} = {}) {
@@ -86,14 +85,11 @@ const setData = (self, data) => {
 }
 
 const defaultInitDocument = (document) => {
-	document.documentElement = document.createElement('html')
 	document.head = document.createElement('head')
 	document.body = document.createElement('body')
 
 	document.documentElement.appendChild(document.head)
 	document.documentElement.appendChild(document.body)
-
-	document.appendChild(document.documentElement)
 }
 
 // eslint-disable-next-line max-params

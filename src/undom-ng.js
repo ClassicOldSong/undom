@@ -1,4 +1,3 @@
-import { createEnvironment, isNode, isElement, Event, createEvent } from './undom.js'
-import serialize from './serializer.js'
-
-export {createEnvironment, createEvent, Event, isNode, isElement, serialize}
+export * from './undom.js'
+export * from './namespaces.js'
+export { default as serialize } from './serializer.js'
