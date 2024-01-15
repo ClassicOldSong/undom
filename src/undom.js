@@ -537,7 +537,7 @@ const createEnvironment = ({
 					if (skipDefault) return
 				}
 
-				if (val !== '') this.appendChild(new scope.Text(val))
+				if (val !== '') this.appendChild(new scope.Text(this.onwnerDocument, val))
 			}
 
 			// eslint-disable-next-line complexity
